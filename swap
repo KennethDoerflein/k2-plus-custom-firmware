@@ -42,7 +42,7 @@ ENV_DEVICES = {
 }
 ENV_SNAPSHOT_FILE = "env.bin"
 PROTECTED_SLOT_FILES = {ENV_SNAPSHOT_FILE}
-MANAGED_UDISK_NAMES = {".slots", ".install", ".k2-custom-root-overlay"}
+MANAGED_UDISK_NAMES = {".slots", ".install", ".k2-custom-root-overlay", "bootstrap"}
 
 SERVICE_TARGETS = [
     {"name": "helixscreen", "systemd": ["helixscreen"], "init": []},

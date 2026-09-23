@@ -20,7 +20,7 @@ FIRMWARE_VERSION = "6.18"
 
 ROOTFS_SHA256 = "ded633761c625a5cfdc673f2d9b9165874131990d21783e35c6eaa0882f863c7"
 KERNEL_SHA256 = "d0244555154bc2498e80ecf746198f0bfea3e698695058b0e2f3a483081222f0"
-SWAP_SHA256 = "33ed8c5a6b5a2aaab1ade2e944f31cf67f7e7a7c6bacdf228ace08b4b5a1208a"
+SWAP_SHA256 = "340aeed76c979ff8f7ebaed7c5174ae88fb78ac44fbe0dbd4c6c4333656be60b"
 HELIX_VERSION = "v0.99.112"
 HELIX_ARCHIVE = f"helixscreen-k2-{HELIX_VERSION}.tar.gz"
 HELIX_URL = (
@@ -515,11 +515,13 @@ def seed_custom_helix_archive(archive_path):
         if os.path.exists(path):
             shutil.rmtree(path, ignore_errors=True)
 
+    log("extracting HelixScreen archive")
     _safe_extract_tar(archive_path, extract_dir, "HelixScreen")
     release_dir = _release_dir_from_extract(extract_dir)
     _validate_helix_release(release_dir)
 
     os.makedirs(CUSTOM_SLOT_DIR, exist_ok=True)
+    log("copying HelixScreen to the custom UDISK slot")
     shutil.copytree(release_dir, new_dir, symlinks=True)
     _preserve_existing_helix_state(CUSTOM_HELIX_DIR, new_dir)
 
@@ -548,6 +550,7 @@ def seed_custom_bootstrap():
     script_dir = os.path.dirname(os.path.abspath(__file__)) if "__file__" in globals() else os.getcwd()
     local_bootstrap = os.path.join(script_dir, "bootstrap")
     if os.path.isfile(local_bootstrap):
+        log("copying custom bootstrap to /mnt/UDISK/bootstrap")
         try:
             shutil.copy2(local_bootstrap, dest)
             os.chmod(dest, 0o755)
