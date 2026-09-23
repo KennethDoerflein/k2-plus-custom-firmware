@@ -786,16 +786,6 @@ def main():
 
         with step("Flashing root file system"):
             flash(rootfs_path, target_rootfs)
-        with step("Removing developer SSH key (Security Fix)"):
-            os.makedirs("/tmp/new_root", exist_ok=True)
-            subprocess.run(["mount", target_rootfs, "/tmp/new_root"], check=False)
-            key_file = "/tmp/new_root/etc/ssh/authorized_keys/root"
-            if os.path.exists(key_file):
-                os.remove(key_file)
-                log("Deleted backdoor SSH key.")
-            else:
-                log("No developer SSH key found.")
-            subprocess.run(["umount", "/tmp/new_root"], check=False)
         with step("Flashing kernel"):
             flash(kernel_path, target_boot)
 

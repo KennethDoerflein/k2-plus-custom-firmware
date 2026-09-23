@@ -927,6 +927,7 @@ def update_k2_configs() -> None:
             detect_error = "printer.cfg probe stack is not carto, mix, or prtouch"
         log_warn(f"Could not detect current probe mode ({detect_error})")
         log_warn(f"Probe mode is now set to {PROBE_MODES['prtouch'][0]}")
+        probe_mode = "prtouch"
 
     printer_cfg = CONFIG_DIR / "printer.cfg"
     blob = None
@@ -1093,6 +1094,18 @@ def main() -> None:
     header("K2 UDISK Bootstrap")
     replace_helix = args.replace is not None and "helixscreen" in args.replace
     only_replace_helix = set(args.replace or []) == {"helixscreen"}
+
+    if is_full_run():
+        with step("Removing developer SSH key (Security Fix)"):
+            key_file = Path("/etc/ssh/authorized_keys/root")
+            if key_file.exists():
+                try:
+                    key_file.unlink()
+                    log("Deleted backdoor SSH key.")
+                except Exception as e:
+                    log_warn(f"Failed to delete SSH key: {e}")
+            else:
+                log("No developer SSH key found.")
 
     if not only_replace_helix:
         with step("Stopping services"):
