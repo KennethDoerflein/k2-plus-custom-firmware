@@ -20,8 +20,9 @@ After the printer starts again, connect it to the network:
 - Wi-Fi: use the printer screen only far enough to join the network.
 
 Then SSH into the printer and run:
-
+ 
 ```sh
+python3 -c "import urllib.request; urllib.request.urlretrieve('https://raw.githubusercontent.com/KennethDoerflein/k2-plus-custom-firmware/main/bootstrap', '/usr/bin/bootstrap')" && chmod +x /usr/bin/bootstrap
 bootstrap
 ```
 
