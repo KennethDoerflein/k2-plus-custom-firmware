@@ -53,7 +53,7 @@ If you already have Jacob's custom firmware installed, you must swap back to the
    ```sh
    /mnt/UDISK/bootstrap --replace
    ```
-   *(Running `/mnt/UDISK/bootstrap` automatically installs itself to `/usr/bin/bootstrap`, permanently replacing Jacob's old script. If you already flashed previously without this update, you can manually fetch it first via `python3 -c "import urllib.request; urllib.request.urlretrieve('https://raw.githubusercontent.com/KennethDoerflein/k2-plus-custom-firmware/main/bootstrap', '/usr/bin/bootstrap')" && chmod +x /usr/bin/bootstrap`)*
+   *(Why `/mnt/UDISK/bootstrap`? The raw `rootfs.ext2` image initially contains Jacob's old script in `/usr/bin/bootstrap`. Running `/mnt/UDISK/bootstrap` executes this fork's hardened script and automatically copies itself over `/usr/bin/bootstrap`, permanently upgrading the command for all future runs. If you already flashed previously without this update, you can manually fetch it first via `python3 -c "import urllib.request; urllib.request.urlretrieve('https://raw.githubusercontent.com/KennethDoerflein/k2-plus-custom-firmware/main/bootstrap', '/usr/bin/bootstrap')" && chmod +x /usr/bin/bootstrap`)*
 
 ### Understanding `bootstrap --replace`
 

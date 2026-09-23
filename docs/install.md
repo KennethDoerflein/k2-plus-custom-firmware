@@ -24,7 +24,7 @@ Then SSH into the printer and run:
 ```sh
 /mnt/UDISK/bootstrap
 ```
-*(Running `/mnt/UDISK/bootstrap` will automatically install itself to `/usr/bin/bootstrap`, so for all future runs you can simply type `bootstrap`.)*
+*(Note: On initial flash, `/usr/bin/bootstrap` contains the prebuilt script from the rootfs image. Running `/mnt/UDISK/bootstrap` executes your seeded version and automatically updates `/usr/bin/bootstrap`, so for all future runs you can simply type `bootstrap`.)*
 
 When bootstrap finishes, Fluidd is available on port `4408` and Mainsail on
 port `4409` at the printer's IP address.
