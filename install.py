@@ -544,6 +544,7 @@ def seed_custom_helix_archive(archive_path):
 
 def seed_custom_bootstrap():
     dest = os.path.join(UDISK, "bootstrap")
+    temp_dest = f"{dest}.tmp"
     script_dir = os.path.dirname(os.path.abspath(__file__)) if "__file__" in globals() else os.getcwd()
     local_bootstrap = os.path.join(script_dir, "bootstrap")
     if os.path.isfile(local_bootstrap):
@@ -556,14 +557,26 @@ def seed_custom_bootstrap():
             log_warn(f"Failed to copy local bootstrap: {e}")
 
     try:
-        log("downloading bootstrap for /mnt/UDISK/bootstrap")
-        req = urllib.request.Request(BOOTSTRAP_URL)
-        with urllib.request.urlopen(req, timeout=30) as resp, open(dest, "wb") as f:
-            f.write(resp.read())
-        os.chmod(dest, 0o755)
+        def attempt():
+            log("downloading bootstrap for /mnt/UDISK/bootstrap")
+            req = urllib.request.Request(BOOTSTRAP_URL)
+            with urllib.request.urlopen(req, timeout=30) as resp, open(temp_dest, "wb") as f:
+                shutil.copyfileobj(resp, f)
+                f.flush()
+                os.fsync(f.fileno())
+            if os.path.getsize(temp_dest) == 0:
+                raise ValueError("downloaded bootstrap is empty")
+            os.chmod(temp_dest, 0o755)
+            os.replace(temp_dest, dest)
+
+        retry_network("downloading bootstrap", attempt)
         log("seeded bootstrap into /mnt/UDISK/bootstrap")
     except Exception as exc:
-        log_warn(f"failed to download bootstrap to /mnt/UDISK: {exc}")
+        try:
+            os.remove(temp_dest)
+        except FileNotFoundError:
+            pass
+        die(f"failed to seed /mnt/UDISK/bootstrap: {exc}")
 
 
 # ---------------------------------------------------------------------------
