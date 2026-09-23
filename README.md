@@ -24,6 +24,19 @@ material-specific Klipper macro overrides.
   next to the script and use them instead of downloading, enabling fully offline
   installation.
 
+## Upgrading from Jacob's Firmware
+
+If you already have Jacob's custom firmware installed, you must swap back to the stock firmware before installing this fork.
+
+1. SSH into the printer.
+2. Run `swap` to switch back to the stock firmware environment. The printer will reboot.
+3. SSH into the printer again (it will now be running stock firmware).
+4. Run the installer for this fork:
+   ```sh
+   python3 -c "import urllib.request; exec(urllib.request.urlopen('https://raw.githubusercontent.com/KennethDoerflein/k2-plus-custom-firmware/main/install.py').read(), {'__name__':'__main__'})"
+   ```
+5. After the installer completes and reboots into the custom firmware, SSH in one more time and run `bootstrap --replace` to update the Git remotes and replace the payloads on your printer with the hardened versions. (Your configuration files will be automatically backed up).
+
 ## Repository Layout
 
 - `kernel.img` and `rootfs.ext2` — firmware images
