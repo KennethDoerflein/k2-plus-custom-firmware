@@ -1,0 +1,29 @@
+name: Publish Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+      
+      - name: Release Firmware Binaries
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            rootfs.ext2
+            kernel.img
+            swap
+            index
+          generate_release_notes: true
