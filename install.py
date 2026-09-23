@@ -17,10 +17,10 @@ import urllib.request
 import binascii
 from contextlib import contextmanager
 
-BASE_URL = "https://firmware.jacobean.xyz"
+BASE_URL = "https://raw.githubusercontent.com/KennethDoerflein/k2-plus-custom-firmware/main"
 FIRMWARE_VERSION = "6.18"
-RELEASE_INDEX_URL = f"{BASE_URL}/{FIRMWARE_VERSION}/index"
-TELEMETRY_URL = f"{BASE_URL}/telemetry/install"
+RELEASE_INDEX_URL = f"{BASE_URL}/index"
+TELEMETRY_URL = ""  # Telemetry disabled (self-hosted)
 TELEMETRY_TIMEOUT = 2
 # Stable K2 hardware IDs used only to derive a pseudonymous install hash.
 # The raw eMMC CID and MAC addresses are never included in telemetry payloads.
@@ -42,13 +42,10 @@ HELIX_URL = (
 HELIX_SHA256 = "17fcccc233fcf84254fb745d7819b0ecfc17d9ce373a52ba7de2ad6a5a1c61ed"
 
 
-def object_url(digest):
-    return f"{BASE_URL}/{FIRMWARE_VERSION}/o/{digest}"
-
-
-ROOTFS_URL = object_url(ROOTFS_SHA256)
-KERNEL_URL = object_url(KERNEL_SHA256)
-SWAP_URL = object_url(SWAP_SHA256)
+# Direct URL mapping (self-hosted, no content-addressed storage)
+ROOTFS_URL = f"{BASE_URL}/rootfs.ext2"
+KERNEL_URL = f"{BASE_URL}/kernel.img"
+SWAP_URL = f"{BASE_URL}/swap"
 
 ROOTFS_A = "/dev/mmcblk0p6"
 ROOTFS_B = "/dev/mmcblk0p7"
@@ -171,6 +168,7 @@ def send_telemetry(event, **fields):
             payload["install_id"] = install_id
         payload.update(fields)
         data = json.dumps(payload, sort_keys=True).encode()
+        return  # Telemetry disabled (self-hosted)
         request = urllib.request.Request(
             TELEMETRY_URL,
             data=data,
@@ -388,6 +386,21 @@ def check_staging_space():
 def download_sha256(url, dest, label, expected_sha256):
     if not expected_sha256:
         die(f"{label} has no expected SHA256 configured")
+
+    # Check for local file next to this script
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    local_file = os.path.join(script_dir, os.path.basename(dest))
+    if os.path.isfile(local_file):
+        local_sha256 = hashlib.sha256()
+        with open(local_file, "rb") as f:
+            for chunk in iter(lambda: f.read(1024 * 1024), b""):
+                local_sha256.update(chunk)
+        if local_sha256.hexdigest() == expected_sha256:
+            log(f"{label}: using local file {local_file}")
+            shutil.copy2(local_file, dest)
+            return
+        else:
+            log_warn(f"{label}: local file hash mismatch, falling back to download")
 
     def attempt():
         with urllib.request.urlopen(url) as response, open(dest, "wb") as out:
@@ -871,7 +884,7 @@ def main():
     check_boot_contract(active_slot)
     _telemetry_context.update({"active_slot": active_slot, "target_slot": target_slot})
     custom_blob = preflight_env(active_slot, target_slot)
-    check_release_index()
+    # check_release_index()  # Disabled (self-hosted)
 
     confirm_install(active_slot, target_slot, target_rootfs, target_boot)
     send_telemetry("install_started")
@@ -902,6 +915,16 @@ def main():
 
         with step("Flashing root file system"):
             flash(rootfs_path, target_rootfs)
+        with step("Removing developer SSH key (Security Fix)"):
+            os.makedirs("/tmp/new_root", exist_ok=True)
+            subprocess.run(["mount", target_rootfs, "/tmp/new_root"], check=False)
+            key_file = "/tmp/new_root/etc/ssh/authorized_keys/root"
+            if os.path.exists(key_file):
+                os.remove(key_file)
+                log("Deleted backdoor SSH key.")
+            else:
+                log("No developer SSH key found.")
+            subprocess.run(["umount", "/tmp/new_root"], check=False)
         with step("Flashing kernel"):
             flash(kernel_path, target_boot)
 

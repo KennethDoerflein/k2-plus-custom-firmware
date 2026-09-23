@@ -1,18 +1,30 @@
-# K2 Plus Custom Firmware
+# K2 Plus Custom Firmware (Security-Hardened Fork)
 
-A complete alternative firmware stack for the Creality K2 Plus.
+A security-hardened fork of [Jacob10383's K2 Plus Custom Firmware](https://github.com/Jacob10383/k2-plus-custom-firmware).
 
-It replaces the stock software environment with a custom Linux kernel, root
-filesystem, and [Kalico fork](https://github.com/Jacob10383/kalico). The
-firmware includes ground-up implementations of CFS control, closed-loop motor
-control, power-loss recovery, and other K2-specific systems.
+This fork removes embedded developer SSH keys, redirects all OTA updates to
+self-hosted GitHub repositories, disables third-party telemetry, and adds
+material-specific Klipper macro overrides.
 
-This is a release repository containing the assembled firmware files and user
-documentation.
+> [!IMPORTANT]
+> After installation is complete, log in to your printer via SSH and immediately
+> run `passwd` to change the default `creality_2024` root password to something
+> secure!
 
-This is an independent project and is not affiliated with Creality.
+## Security Changes
 
-## Repository layout
+- **SSH Backdoor Removed**: The installer now automatically deletes the embedded
+  developer Ed25519 public key from `/etc/ssh/authorized_keys/root` after
+  flashing the root filesystem.
+- **Self-Hosted OTA**: All firmware downloads and bootstrap clones now point to
+  this repository and its companion forks, not `firmware.jacobean.xyz`.
+- **Telemetry Disabled**: Pseudonymous install telemetry to the original author's
+  server has been disabled.
+- **Local Firmware Flashing**: `install.py` can detect firmware binaries placed
+  next to the script and use them instead of downloading, enabling fully offline
+  installation.
+
+## Repository Layout
 
 - `kernel.img` and `rootfs.ext2` — firmware images
 - `install.py` — installation entrypoint
@@ -21,6 +33,9 @@ This is an independent project and is not affiliated with Creality.
 - `extras/` — Kalico extensions for K2-specific hardware and functionality
 - `docs/` — user documentation
 
-For installation, setup, calibration, OrcaSlicer configuration, updates, and
-reference material, see the
-[documentation](https://jacob10383.github.io/k2-plus-custom-firmware/).
+## Companion Repositories
+
+- [Kalico (Klipper fork)](https://github.com/KennethDoerflein/kalico)
+- [Fluidd (Web UI)](https://github.com/KennethDoerflein/fluidd)
+
+This is an independent project and is not affiliated with Creality.

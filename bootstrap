@@ -36,12 +36,15 @@ ROOT = UDISK
 PRINTER_DATA = UDISK / "printer_data"
 CONFIG_DIR = PRINTER_DATA / "config"
 
-KALICO_REPO = "https://github.com/Jacob10383/kalico"
+KALICO_REPO = "https://github.com/KennethDoerflein/kalico"
 KALICO_BRANCH = "main"
+FIRMWARE_REPO = "https://github.com/KennethDoerflein/k2-plus-custom-firmware"
+FIRMWARE_BRANCH = "main"
+GITHUB_TOKEN = ""  # For private repos
 MOONRAKER_REPO = "https://github.com/arksine/moonraker"
 CARTOGRAPHER_PACKAGE = "cartographer3d-plugin"
 
-FLUIDD_REPO = "Jacob10383/fluidd"
+FLUIDD_REPO = "KennethDoerflein/fluidd"
 FLUIDD_ASSET = "fluidd.zip"
 MAINSAIL_REPO = "mainsail-crew/mainsail"
 MAINSAIL_ASSET = "mainsail.zip"
@@ -57,7 +60,7 @@ FIRMWARE_BASE_URL = "https://firmware.jacobean.xyz"
 FIRMWARE_VERSION = "6.18"
 RELEASE_INDEX_URL = f"{FIRMWARE_BASE_URL}/{FIRMWARE_VERSION}/index"
 BOOTSTRAP_INSTALL_PATH = Path("/usr/bin/bootstrap")
-TIMEZONE_URL = "https://ipapi.co/timezone"
+TIMEZONE_URL = "http://ip-api.com/line?fields=timezone"
 NETWORK_ATTEMPTS = 3
 NETWORK_DELAY_SECONDS = 3
 
@@ -243,10 +246,14 @@ def clone_repo(url: str, dest: Path, *, branch: str | None, replace: bool) -> bo
         log(f"{dest.name} already exists; skipping clone")
         return False
     prepare_path(dest, replace=replace)
+    # Inject GitHub token for private repo authentication
+    clone_url = url
+    if GITHUB_TOKEN and "github.com" in url:
+        clone_url = url.replace("https://github.com", f"https://{GITHUB_TOKEN}@github.com")
     cmd = ["git", "clone", "--depth", "1"]
     if branch:
         cmd.extend(["--branch", branch])
-    cmd.extend([url, str(dest)])
+    cmd.extend([clone_url, str(dest)])
     log("$ " + " ".join(cmd))
 
     def attempt() -> None:
@@ -320,7 +327,10 @@ def latest_release_asset(repo: str, asset_name: str) -> tuple[str, str]:
     url = f"https://api.github.com/repos/{repo}/releases/latest"
     log(f"fetching latest release metadata for {repo}")
     def attempt():
-        req = urllib.request.Request(url, headers={"Accept": "application/vnd.github+json"})
+        headers = {"Accept": "application/vnd.github+json"}
+        if GITHUB_TOKEN:
+            headers["Authorization"] = f"Bearer {GITHUB_TOKEN}"
+        req = urllib.request.Request(url, headers=headers)
         with urllib.request.urlopen(req, timeout=60) as response:
             return json.load(response)
 
@@ -331,7 +341,8 @@ def latest_release_asset(repo: str, asset_name: str) -> tuple[str, str]:
 
     for asset in release.get("assets", []):
         if asset.get("name") == asset_name:
-            return release.get("tag_name", "unknown"), asset["browser_download_url"]
+            download_url = asset["url"] if GITHUB_TOKEN else asset["browser_download_url"]
+            return release.get("tag_name", "unknown"), download_url
 
     assets = ", ".join(asset.get("name", "?") for asset in release.get("assets", []))
     raise SystemExit(f"{repo} latest release has no {asset_name!r} asset; assets: {assets}")
@@ -339,7 +350,12 @@ def latest_release_asset(repo: str, asset_name: str) -> tuple[str, str]:
 
 def download(url: str, dest: Path) -> None:
     def attempt():
-        with urllib.request.urlopen(url, timeout=300) as response:
+        headers = {}
+        if GITHUB_TOKEN and "api.github.com" in url:
+            headers["Authorization"] = f"Bearer {GITHUB_TOKEN}"
+            headers["Accept"] = "application/octet-stream"
+        req = urllib.request.Request(url, headers=headers)
+        with urllib.request.urlopen(req, timeout=300) as response:
             with dest.open("wb") as handle:
                 shutil.copyfileobj(response, handle)
 
@@ -678,50 +694,28 @@ def install_kalico_extras(index: dict | None = None) -> list[Path]:
     extras_dir = ROOT / "klipper" / "klippy" / "extras"
     extras_dir.mkdir(parents=True, exist_ok=True)
 
-    index = index or fetch_release_index()
-    extras = index.get("extras")
-    if not isinstance(extras, dict):
-        raise SystemExit(f"{RELEASE_INDEX_URL} did not contain an extras object")
-    manifest_sha256 = extras.get("manifest_sha256")
-    if (
-        not isinstance(manifest_sha256, str)
-        or len(manifest_sha256) != 64
-        or any(c not in "0123456789abcdef" for c in manifest_sha256)
-    ):
-        raise SystemExit(f"{RELEASE_INDEX_URL} did not contain a valid extras manifest SHA256")
+    # Clone the firmware repo to get the latest extras
+    with tempfile.TemporaryDirectory(prefix="udisk-extras-", dir=str(UDISK)) as tmpdir:
+        tmp = Path(tmpdir)
+        repo_dir = tmp / "firmware-repo"
+        clone_repo(FIRMWARE_REPO, repo_dir, branch=FIRMWARE_BRANCH, replace=True)
+        src_extras = repo_dir / "extras"
+        if not src_extras.is_dir():
+            raise SystemExit(f"extras directory not found in {FIRMWARE_REPO}")
 
-    manifest_url = object_url(manifest_sha256)
-    manifest = fetch_json_sha256(manifest_url, manifest_sha256)
-    if not isinstance(manifest, dict):
-        raise SystemExit(f"{manifest_url} did not contain an object")
-    if manifest.get("format") != "k2-extras-sha256-v1" or manifest.get("version") != FIRMWARE_VERSION:
-        raise SystemExit(f"{manifest_url} has an unsupported extras manifest format")
-    files = manifest.get("files")
-    if not isinstance(files, dict):
-        raise SystemExit(f"{manifest_url} did not contain a files object")
+        changed = []
+        for src_file in sorted(src_extras.iterdir()):
+            if not src_file.is_file() or not src_file.name.endswith(".py"):
+                continue
+            dest = extras_dir / src_file.name
+            src_hash = file_sha256(src_file)
+            if dest.is_file() and file_sha256(dest) == src_hash:
+                log(f"{src_file.name} already current")
+                continue
+            log(f"installing {src_file.name}" if not dest.exists() else f"updating {src_file.name}")
+            shutil.copy2(src_file, dest)
+            changed.append(dest)
 
-    changed = []
-    for name, meta in sorted(files.items()):
-        if (
-            not isinstance(name, str)
-            or "/" in name
-            or name.startswith(".")
-            or not isinstance(meta, dict)
-            or not isinstance(meta.get("sha256"), str)
-        ):
-            raise SystemExit(f"{manifest_url} contains invalid file metadata")
-        digest = meta["sha256"]
-        dest = extras_dir / name
-        if dest.is_file() and file_sha256(dest) == digest:
-            log(f"{name} already current")
-            continue
-        log(f"installing {name}" if not dest.exists() else f"updating {name}")
-        download_sha256(
-            object_url(digest),
-            dest,
-            digest,
-        )
-        changed.append(dest)
     return changed
 
 
@@ -1057,14 +1051,16 @@ def main() -> None:
 
         header("K2 Update")
         if update_bootstrap:
-            require_root()
-            index = fetch_release_index()
-            with step("Updating bootstrap"):
-                bootstrap_changed = install_bootstrap_update(index)
-            if bootstrap_changed and (update_extras or update_configs):
-                log("Relaunching updated bootstrap...")
-                os.execv(sys.argv[0], sys.argv)
-                return
+            # Disabled: bootstrap self-update from Jacobean's release index
+            # require_root()
+            # index = fetch_release_index()
+            # with step("Updating bootstrap"):
+            #     bootstrap_changed = install_bootstrap_update(index)
+            # if bootstrap_changed and (update_extras or update_configs):
+            #     log("Relaunching updated bootstrap...")
+            #     os.execv(sys.argv[0], sys.argv)
+            #     return
+            log("Bootstrap self-update disabled (self-hosted mode)")
 
         if update_extras:
             preflight_update_extras()
