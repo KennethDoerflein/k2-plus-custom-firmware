@@ -705,7 +705,11 @@ def install_kalico_extras() -> list[Path]:
 
         changed = []
         for src_file in sorted(src_extras.iterdir()):
-            if not src_file.is_file() or not src_file.name.endswith(".py"):
+            if (
+                not src_file.is_file()
+                or src_file.name == "manifest.json"
+                or src_file.suffix not in {".py", ".json"}
+            ):
                 continue
             dest = extras_dir / src_file.name
             src_hash = file_sha256(src_file)
