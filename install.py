@@ -305,8 +305,8 @@ def download_sha256(url, dest, label, expected_sha256):
     if not expected_sha256:
         die(f"{label} has no expected SHA256 configured")
 
-    # Check for local file next to this script
-    script_dir = os.path.dirname(os.path.abspath(__file__))
+    # Check for local file next to this script (or current directory if run via exec)
+    script_dir = os.path.dirname(os.path.abspath(__file__)) if '__file__' in globals() else os.getcwd()
     local_file = os.path.join(script_dir, os.path.basename(dest))
     if os.path.isfile(local_file):
         local_sha256 = hashlib.sha256()
