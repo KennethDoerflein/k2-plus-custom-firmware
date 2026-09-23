@@ -1,6 +1,6 @@
-site_name: Jacobean's K2 Plus firmware
-site_description: Documentation for the Creality K2 Plus firmware
-site_url: https://jacob10383.github.io/k2-plus-custom-firmware/
+site_name: K2 Plus Custom Firmware
+site_description: Documentation for K2 Plus Custom Firmware
+site_url: https://kennethDoerflein.github.io/k2-plus-custom-firmware/
 
 theme:
   name: material

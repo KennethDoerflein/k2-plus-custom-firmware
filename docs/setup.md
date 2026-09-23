@@ -55,8 +55,8 @@ its own `M191` before `START_PRINT`.
 
 ## CFS synchronization
 
-My [OrcaSlicer fork](https://github.com/Jacob10383/OrcaSlicer) improves CFS
-synchronization so slots can resolve to the actual Orca filament preset instead
+The upstream [OrcaSlicer](https://github.com/SoftFever/OrcaSlicer) is recommended.
+The CFS synchronization resolves slots to actual Orca filament presets instead
 of collapsing to a generic material profile.
 
 See [CFS and RFID](cfs.md) for the Filament Box widget and CFS controls in

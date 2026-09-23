@@ -56,9 +56,9 @@ HELIX_DIR = ROOT / "helixscreen"
 MOONRAKER_ASVC = "klipper_mcu\nhelixscreen\nustreamer@stockcam\n"
 
 TIMELAPSE_URL = "https://raw.githubusercontent.com/mainsail-crew/moonraker-timelapse/main/component/timelapse.py"
-FIRMWARE_BASE_URL = "https://firmware.jacobean.xyz"
+FIRMWARE_BASE_URL = "https://github.com/KennethDoerflein/k2-plus-custom-firmware/releases/download"
 FIRMWARE_VERSION = "6.18"
-RELEASE_INDEX_URL = f"{FIRMWARE_BASE_URL}/{FIRMWARE_VERSION}/index"
+RELEASE_INDEX_URL = f"{FIRMWARE_BASE_URL}/v{FIRMWARE_VERSION}/index"
 BOOTSTRAP_INSTALL_PATH = Path("/usr/bin/bootstrap")
 TIMEZONE_URL = "http://ip-api.com/line?fields=timezone"
 NETWORK_ATTEMPTS = 3
@@ -78,7 +78,7 @@ MANAGED_PATHS = [
 
 
 def object_url(digest: str) -> str:
-    return f"{FIRMWARE_BASE_URL}/{FIRMWARE_VERSION}/o/{digest}"
+    return f"{FIRMWARE_BASE_URL}/v{FIRMWARE_VERSION}/{digest}"
 
 
 def header(message: str) -> None:
@@ -690,7 +690,7 @@ def install_timelapse() -> None:
     log(f"wrote {dest}")
 
 
-def install_kalico_extras(index: dict | None = None) -> list[Path]:
+def install_kalico_extras() -> list[Path]:
     extras_dir = ROOT / "klipper" / "klippy" / "extras"
     extras_dir.mkdir(parents=True, exist_ok=True)
 
@@ -926,7 +926,7 @@ def update_k2_configs() -> None:
         if detect_error is None:
             detect_error = "printer.cfg probe stack is not carto, mix, or prtouch"
         log_warn(f"Could not detect current probe mode ({detect_error})")
-        log_warn(f"Probe mode is now set to {PROBE_MODES['carto'][0]}")
+        log_warn(f"Probe mode is now set to {PROBE_MODES['prtouch'][0]}")
 
     printer_cfg = CONFIG_DIR / "printer.cfg"
     blob = None
@@ -1051,7 +1051,7 @@ def main() -> None:
 
         header("K2 Update")
         if update_bootstrap:
-            # Disabled: bootstrap self-update from Jacobean's release index
+            # Disabled: bootstrap self-update (self-hosted mode)
             # require_root()
             # index = fetch_release_index()
             # with step("Updating bootstrap"):
@@ -1064,9 +1064,8 @@ def main() -> None:
 
         if update_extras:
             preflight_update_extras()
-            index = index or fetch_release_index()
             with step("Updating Kalico extras"):
-                changed = install_kalico_extras(index)
+                changed = install_kalico_extras()
             if changed and not update_configs:
                 with step("Restarting Klipper"):
                     service_control("restart", ["klipper"])

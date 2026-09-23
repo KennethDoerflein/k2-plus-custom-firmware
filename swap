@@ -252,7 +252,7 @@ def firmware_label(env_name: str) -> str:
     if env_name == "stock":
         version = read_fw_env("version")
         return f"Creality firmware {version}" if version else "Creality firmware"
-    return "Jacobean's firmware"
+    return "K2 Plus Custom Firmware"
 
 
 def confirm_swap(from_slot: str, from_partition_slot: str, to_slot: str, to_partition_slot: str) -> None:

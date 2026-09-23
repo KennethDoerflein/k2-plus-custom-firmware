@@ -1,10 +1,10 @@
-# Jacobean's K2 Plus firmware
+# K2 Plus Custom Firmware
 
 A complete alternative firmware stack for the Creality K2 Plus.
 
 It includes a custom Linux system and
-[my Kalico fork](https://github.com/Jacob10383/kalico), with
-[ground-up implementations](https://github.com/Jacob10383/k2-plus-custom-firmware/tree/main/extras)
+[a Kalico fork](https://github.com/KennethDoerflein/kalico), with
+[ground-up implementations](https://github.com/KennethDoerflein/k2-plus-custom-firmware/tree/main/extras)
 of CFS control, closed-loop motor control, power-loss recovery, and other
 K2-specific systems.
 

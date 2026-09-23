@@ -22,13 +22,13 @@ bootstrap --update extras
 bootstrap --update configs
 ```
 
-This installs the [K2 configuration](https://github.com/Jacob10383/kalico/tree/main/config/k2),
+This installs the [K2 configuration](https://github.com/KennethDoerflein/kalico/tree/main/config/k2),
 then puts back the `SAVE_CONFIG` block from `printer.cfg`, `overrides.cfg`,
 extra files you added, and the current probe mode. Moonraker and Klipper are
 stopped before the swap and started afterward. A timestamped copy of the
 previous configuration is left in `printer_data/config/config_backups/`.
 
-If the probe stack cannot be read, `carto` is left in place.
+If the probe stack cannot be read, `prtouch` is left in place.
 
 ## Replace the printer configuration
 
@@ -38,7 +38,7 @@ bootstrap --replace configs
 
 This moves the current configuration into
 `printer_data/config/config_backups/<timestamp>/` and installs the
-[K2 configuration](https://github.com/Jacob10383/kalico/tree/main/config/k2).
+[K2 configuration](https://github.com/KennethDoerflein/kalico/tree/main/config/k2).
 
 !!! warning
     This replaces your active configuration. Use it for recovery or when you

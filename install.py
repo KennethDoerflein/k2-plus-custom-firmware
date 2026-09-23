@@ -3,7 +3,6 @@
 # This file may be distributed under the terms of the GNU GPLv3 license.
 
 import hashlib
-import json
 import os
 import shutil
 import signal
@@ -12,23 +11,12 @@ import subprocess
 import sys
 import tarfile
 import time
-import traceback
 import urllib.request
 import binascii
 from contextlib import contextmanager
 
-BASE_URL = "https://raw.githubusercontent.com/KennethDoerflein/k2-plus-custom-firmware/main"
+BASE_URL = "https://github.com/KennethDoerflein/k2-plus-custom-firmware/releases/download"
 FIRMWARE_VERSION = "6.18"
-RELEASE_INDEX_URL = f"{BASE_URL}/index"
-TELEMETRY_URL = ""  # Telemetry disabled (self-hosted)
-TELEMETRY_TIMEOUT = 2
-# Stable K2 hardware IDs used only to derive a pseudonymous install hash.
-# The raw eMMC CID and MAC addresses are never included in telemetry payloads.
-TELEMETRY_ID_PATHS = (
-    "/sys/block/mmcblk0/device/cid",
-    "/sys/class/net/eth0/address",
-    "/sys/class/net/wlan0/address",
-)
 
 ROOTFS_SHA256 = "ded633761c625a5cfdc673f2d9b9165874131990d21783e35c6eaa0882f863c7"
 KERNEL_SHA256 = "d0244555154bc2498e80ecf746198f0bfea3e698695058b0e2f3a483081222f0"
@@ -41,11 +29,10 @@ HELIX_URL = (
 )
 HELIX_SHA256 = "17fcccc233fcf84254fb745d7819b0ecfc17d9ce373a52ba7de2ad6a5a1c61ed"
 
-
-# Direct URL mapping (self-hosted, no content-addressed storage)
-ROOTFS_URL = f"{BASE_URL}/rootfs.ext2"
-KERNEL_URL = f"{BASE_URL}/kernel.img"
-SWAP_URL = f"{BASE_URL}/swap"
+# Download from GitHub Releases (supports files >100MB)
+ROOTFS_URL = f"{BASE_URL}/v{FIRMWARE_VERSION}/rootfs.ext2"
+KERNEL_URL = f"{BASE_URL}/v{FIRMWARE_VERSION}/kernel.img"
+SWAP_URL = f"{BASE_URL}/v{FIRMWARE_VERSION}/swap"
 
 ROOTFS_A = "/dev/mmcblk0p6"
 ROOTFS_B = "/dev/mmcblk0p7"
@@ -97,8 +84,6 @@ EXPECTED_CMDLINE_PARTITIONS = (
 )
 
 _current_step = "preflight"
-_telemetry_context = {}
-_telemetry_failure_done = False
 
 
 def _fmt(seconds):
@@ -125,68 +110,6 @@ def log_warn(message):
     print(f"  \033[33m{message}\033[0m", flush=True)
 
 
-def _telemetry_id_value(path):
-    with open(path, encoding="utf-8", errors="ignore") as f:
-        value = f.read().strip().lower()
-    compact = value.replace(":", "").replace("-", "")
-    if compact.startswith("0x"):
-        compact = compact[2:]
-    if not compact or set(compact) == {"0"}:
-        return None
-    return value
-
-
-def telemetry_install_id():
-    parts = []
-    try:
-        for path in TELEMETRY_ID_PATHS:
-            try:
-                value = _telemetry_id_value(path)
-            except OSError:
-                continue
-            if value:
-                parts.append(f"{path}={value}")
-        if not parts:
-            return None
-        return hashlib.sha256(("k2cf-install-id-v1|" + "|".join(parts)).encode()).hexdigest()
-    except BaseException:
-        return None
-
-
-def send_telemetry(event, **fields):
-    try:
-        if "--no-telemetry" in sys.argv[1:]:
-            return
-        payload = {
-            "event": event,
-            "version": FIRMWARE_VERSION,
-            "step": _current_step,
-            **_telemetry_context,
-        }
-        install_id = telemetry_install_id()
-        if install_id:
-            payload["install_id"] = install_id
-        payload.update(fields)
-        data = json.dumps(payload, sort_keys=True).encode()
-        return  # Telemetry disabled (self-hosted)
-        request = urllib.request.Request(
-            TELEMETRY_URL,
-            data=data,
-            headers={"Content-Type": "application/json"},
-            method="POST",
-        )
-        with urllib.request.urlopen(request, timeout=TELEMETRY_TIMEOUT):
-            pass
-    except BaseException:
-        pass
-
-
-def send_failure_telemetry(**fields):
-    global _telemetry_failure_done
-    if _telemetry_failure_done:
-        return
-    _telemetry_failure_done = True
-    send_telemetry("install_error", **fields)
 
 
 @contextmanager
@@ -206,11 +129,6 @@ def success(message):
 
 
 def die(msg):
-    global _telemetry_failure_done
-    if str(msg) == "install cancelled":
-        _telemetry_failure_done = True
-    else:
-        send_failure_telemetry(error_kind="controlled", message=str(msg))
     print(f"\n\033[1;31mERROR:\033[0m {msg}")
     sys.exit(1)
 
@@ -260,7 +178,7 @@ def check_stock():
     if rootfs_custom != kernel_custom:
         die("Kernel/rootfs mismatch detected; refusing to run full installer")
     if rootfs_custom:
-        die("Already running Jacobean's firmware; run the full installer from stock firmware")
+        die("Already running custom firmware; run the full installer from stock firmware")
 
     if not os.path.isdir("/rom"):
         die("/rom not found — does not look like stock firmware")
@@ -462,40 +380,6 @@ def download_sha256(url, dest, label, expected_sha256):
             pass
         die(f"failed to download {label}: {exc}")
 
-
-def fetch_json(url, label):
-    def attempt():
-        with urllib.request.urlopen(url) as response:
-            return json.load(response)
-
-    try:
-        return retry_network(f"fetching {label}", attempt)
-    except Exception as exc:
-        die(f"failed to fetch {label}: {exc}")
-
-
-def _validate_index_entry(index, key, expected_sha256):
-    entry = index.get(key)
-    if not isinstance(entry, dict):
-        die(f"release index missing {key!r} entry")
-    digest = entry.get("sha256")
-    if digest != expected_sha256:
-        die(f"release index {key} SHA mismatch: expected {expected_sha256}, got {digest}")
-    size = entry.get("size")
-    if not isinstance(size, int) or size <= 0:
-        die(f"release index {key} has invalid size")
-
-
-def check_release_index():
-    index = fetch_json(RELEASE_INDEX_URL, "release index")
-    if not isinstance(index, dict):
-        die("release index did not contain an object")
-    if index.get("format") != "k2-release-index-v1" or index.get("version") != FIRMWARE_VERSION:
-        die("release index has an unsupported format")
-    _validate_index_entry(index, "rootfs", ROOTFS_SHA256)
-    _validate_index_entry(index, "kernel", KERNEL_SHA256)
-    _validate_index_entry(index, "swap", SWAP_SHA256)
-    return index
 
 
 def flash(image, partition):
@@ -845,19 +729,9 @@ def confirm_install(active_slot, target_slot, target_rootfs, target_boot):
         f"{current_rootfs} and {current_boot}."
     )
     log(
-        f"This will download and install Jacobean's firmware on the inactive slot "
+        f"This will download and install K2 Plus Custom Firmware on the inactive slot "
         f"({target_rootfs_name} / {target_boot_name})."
     )
-    if "--no-telemetry" not in sys.argv[1:]:
-        print()
-        log_warn(
-            "This installer uses pseudonymous install/error telemetry. "
-            "Rerun installer with --no-telemetry to disable."
-        )
-        log_warn(
-            "Telemetry is only used by this installer. "
-            "The installed firmware includes no telemetry."
-        )
 
     try:
         answer = input("\nContinue? [y/N]: ").strip().lower()
@@ -874,7 +748,7 @@ def shutdown_device():
 
 
 def main():
-    header("Jacobean's K2 Plus Firmware Installer")
+    header("K2 Plus Custom Firmware Installer")
 
     ignore_sighup()
     check_root()
@@ -882,12 +756,9 @@ def main():
     check_udisk()
     active_slot, target_slot, target_rootfs, target_boot = get_partitions()
     check_boot_contract(active_slot)
-    _telemetry_context.update({"active_slot": active_slot, "target_slot": target_slot})
     custom_blob = preflight_env(active_slot, target_slot)
-    # check_release_index()  # Disabled (self-hosted)
 
     confirm_install(active_slot, target_slot, target_rootfs, target_boot)
-    send_telemetry("install_started")
 
     prepare_staging_dir()
     check_staging_space()
@@ -934,30 +805,16 @@ def main():
         with step("Preparing custom env snapshot"):
             write_custom_env_blob(target_slot, custom_blob)
 
-        with step("Swapping to Jacobean's firmware"):
+        with step("Swapping to custom firmware"):
             run_swap()
     finally:
         shutil.rmtree(STAGING_DIR, ignore_errors=True)
 
     success("Install complete")
-    send_telemetry("install_success", step="complete")
     log("Hard power cycle your printer and run 'bootstrap'")
     time.sleep(2)
     shutdown_device()
 
 
 if __name__ == "__main__":
-    try:
-        main()
-    except SystemExit as exc:
-        if exc.code not in (None, 0):
-            send_failure_telemetry(error_kind="system_exit", message=str(exc.code))
-        raise
-    except Exception as exc:
-        send_failure_telemetry(
-            error_kind="exception",
-            exception_type=type(exc).__name__,
-            message=str(exc),
-            traceback=traceback.format_exc(),
-        )
-        raise
+    main()

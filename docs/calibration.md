@@ -15,7 +15,7 @@ CARTOGRAPHER_TOUCH_CALIBRATE METHOD=touch
 CARTOGRAPHER_SCAN_CALIBRATE
 ```
 
-The default probe mode is `carto`. If you changed modes, use the matching
+The default probe mode is `prtouch`. If you changed modes, use the matching
 instructions under [Probe modes](#probe-modes) instead.
 
 ### 2. Calibrate the cutter
