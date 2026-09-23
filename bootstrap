@@ -687,6 +687,15 @@ def install_moonraker_asvc() -> None:
 def install_timelapse() -> None:
     dest = ROOT / "moonraker" / "moonraker" / "components" / "timelapse.py"
     download(TIMELAPSE_URL, dest)
+    exclude_file = ROOT / "moonraker" / ".git" / "info" / "exclude"
+    exclude_file.parent.mkdir(parents=True, exist_ok=True)
+    existing = exclude_file.read_text(encoding="utf-8") if exclude_file.is_file() else ""
+    relative_dest = "moonraker/components/timelapse.py"
+    if relative_dest not in existing.splitlines():
+        with exclude_file.open("a", encoding="utf-8") as stream:
+            if existing and not existing.endswith("\n"):
+                stream.write("\n")
+            stream.write(f"{relative_dest}\n")
     log(f"wrote {dest}")
 
 
@@ -1186,6 +1195,7 @@ def main() -> None:
                     backup_config_dir()
                 install_moonraker_asvc()
                 install_k2_configs()
+                set_probe_mode("prtouch", restart=False, quiet=True)
 
     if replace_helix:
         with step("Installing HelixScreen"):

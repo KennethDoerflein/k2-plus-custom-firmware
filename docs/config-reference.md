@@ -76,7 +76,7 @@ K2 load-cell probe and multi-sample Z-home settings.
 ```ini
 [prtouch]
 z_offset: 0                 # Probe offset; required
-register_as_probe: False    # Keep PRTouch as an alternate prtouch: chip
+register_as_probe: True     # Expose PRTouch as the Klipper probe chip
 speed: 5                    # Probe speed, mm/s
 lift_speed: 40              # Probe lift speed, mm/s
 samples: 1                  # Standard probe samples
