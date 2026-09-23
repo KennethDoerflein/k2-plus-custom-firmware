@@ -24,6 +24,20 @@ material-specific Klipper macro overrides.
   next to the script and use them instead of downloading, enabling fully offline
   installation.
 
+### Verifying the SSH Backdoor is Removed
+
+To verify that the developer SSH key has been successfully deleted from the printer:
+
+```sh
+cat /etc/ssh/authorized_keys/root
+```
+
+**Expected output:**
+```
+cat: can't open '/etc/ssh/authorized_keys/root': No such file or directory
+```
+If the file does not exist, the backdoor key is completely gone and cannot be used to access your printer.
+
 ## Upgrading from Jacob's Firmware
 
 If you already have Jacob's custom firmware installed, you must swap back to the stock firmware before installing this fork.
@@ -35,7 +49,38 @@ If you already have Jacob's custom firmware installed, you must swap back to the
    ```sh
    python3 -c "import urllib.request; exec(urllib.request.urlopen('https://raw.githubusercontent.com/KennethDoerflein/k2-plus-custom-firmware/main/install.py').read(), {'__name__':'__main__'})"
    ```
-5. After the installer completes and reboots into the custom firmware, SSH in one more time and run `bootstrap --replace` to update the Git remotes and replace the payloads on your printer with the hardened versions. (Your configuration files will be automatically backed up).
+5. After the installer completes and reboots into the custom firmware, SSH in and run `bootstrap --replace`.
+
+### Understanding `bootstrap --replace`
+
+If you run `bootstrap` on a printer that already had Jacob's firmware installed, you will see this prompt:
+
+```
+bootstrap would overwrite existing managed paths.
+  /mnt/UDISK/klipper
+  /mnt/UDISK/moonraker
+  /mnt/UDISK/klippy-env
+  /mnt/UDISK/moonraker-env
+  /mnt/UDISK/fluidd
+  /mnt/UDISK/mainsail
+  /mnt/UDISK/printer_data/config
+rerun with --replace to delete and recreate them
+```
+
+#### Why this happens
+The `/mnt/UDISK` partition is shared storage and persists across firmware installs. The existing directories still contain Jacob's original remotes, web UIs, and Python environments.
+
+`bootstrap` refuses to overwrite these paths without your permission to prevent accidental data loss.
+
+#### What `--replace` does
+Running `bootstrap --replace`:
+1. **Deletes and reclones** Klipper, Moonraker, Fluidd, and Mainsail from Kenneth's hardened repositories instead of Jacob's.
+2. **Recreates** the Python virtual environments (`klippy-env`, `moonraker-env`) cleanly.
+3. **Automatically backs up your configuration files**: Before replacing `/mnt/UDISK/printer_data/config`, `bootstrap` moves all existing configuration files into:
+   ```
+   /mnt/UDISK/printer_data/config/config_backups/bootstrap-replace-<timestamp>/
+   ```
+   Your custom macros, saved bed meshes, and probe offsets will remain safe in this backup directory so you can reference or restore them.
 
 ## Repository Layout
 
