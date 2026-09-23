@@ -33,6 +33,7 @@ HELIX_SHA256 = "17fcccc233fcf84254fb745d7819b0ecfc17d9ce373a52ba7de2ad6a5a1c61ed
 ROOTFS_URL = f"{BASE_URL}/v{FIRMWARE_VERSION}/rootfs.ext2"
 KERNEL_URL = f"{BASE_URL}/v{FIRMWARE_VERSION}/kernel.img"
 SWAP_URL = f"{BASE_URL}/v{FIRMWARE_VERSION}/swap"
+BOOTSTRAP_URL = "https://raw.githubusercontent.com/KennethDoerflein/k2-plus-custom-firmware/main/bootstrap"
 
 ROOTFS_A = "/dev/mmcblk0p6"
 ROOTFS_B = "/dev/mmcblk0p7"
@@ -541,6 +542,30 @@ def seed_custom_helix_archive(archive_path):
     log(f"seeded HelixScreen {HELIX_VERSION} into custom UDISK slot")
 
 
+def seed_custom_bootstrap():
+    dest = os.path.join(UDISK, "bootstrap")
+    script_dir = os.path.dirname(os.path.abspath(__file__)) if "__file__" in globals() else os.getcwd()
+    local_bootstrap = os.path.join(script_dir, "bootstrap")
+    if os.path.isfile(local_bootstrap):
+        try:
+            shutil.copy2(local_bootstrap, dest)
+            os.chmod(dest, 0o755)
+            log("seeded local bootstrap into /mnt/UDISK/bootstrap")
+            return
+        except Exception as e:
+            log_warn(f"Failed to copy local bootstrap: {e}")
+
+    try:
+        log("downloading bootstrap for /mnt/UDISK/bootstrap")
+        req = urllib.request.Request(BOOTSTRAP_URL)
+        with urllib.request.urlopen(req, timeout=30) as resp, open(dest, "wb") as f:
+            f.write(resp.read())
+        os.chmod(dest, 0o755)
+        log("seeded bootstrap into /mnt/UDISK/bootstrap")
+    except Exception as exc:
+        log_warn(f"failed to download bootstrap to /mnt/UDISK: {exc}")
+
+
 # ---------------------------------------------------------------------------
 # U-Boot env helpers (minimal inline copy for writing custom env.bin)
 # ---------------------------------------------------------------------------
@@ -783,6 +808,7 @@ def main():
 
         with step("Preparing custom UDISK payloads"):
             seed_custom_helix_archive(helix_path)
+            seed_custom_bootstrap()
 
         with step("Flashing root file system"):
             flash(rootfs_path, target_rootfs)
@@ -801,7 +827,8 @@ def main():
         shutil.rmtree(STAGING_DIR, ignore_errors=True)
 
     success("Install complete")
-    log("Hard power cycle your printer and run 'bootstrap'")
+    log("Hard power cycle your printer, SSH in, and run:")
+    log("  /mnt/UDISK/bootstrap")
     time.sleep(2)
     shutdown_device()
 

@@ -1095,6 +1095,16 @@ def main() -> None:
     replace_helix = args.replace is not None and "helixscreen" in args.replace
     only_replace_helix = set(args.replace or []) == {"helixscreen"}
 
+    # Keep /usr/bin/bootstrap in sync with this running script
+    try:
+        current_script = Path(__file__).resolve()
+        if current_script != BOOTSTRAP_INSTALL_PATH and BOOTSTRAP_INSTALL_PATH.parent.is_dir():
+            shutil.copy2(current_script, BOOTSTRAP_INSTALL_PATH)
+            BOOTSTRAP_INSTALL_PATH.chmod(0o755)
+            log("Installed bootstrap to /usr/bin/bootstrap")
+    except Exception as e:
+        log_warn(f"Could not update /usr/bin/bootstrap: {e}")
+
     if is_full_run():
         with step("Removing developer SSH key (Security Fix)"):
             key_file = Path("/etc/ssh/authorized_keys/root")

@@ -49,11 +49,11 @@ If you already have Jacob's custom firmware installed, you must swap back to the
    ```sh
    python3 -c "import urllib.request; exec(urllib.request.urlopen('https://raw.githubusercontent.com/KennethDoerflein/k2-plus-custom-firmware/main/install.py').read(), {'__name__':'__main__'})"
    ```
-5. After the installer completes and reboots into the custom firmware, SSH in, update `bootstrap` to this fork's version, and run `bootstrap --replace`:
+5. After the installer completes and reboots into the custom firmware, SSH in and run:
    ```sh
-   python3 -c "import urllib.request; urllib.request.urlretrieve('https://raw.githubusercontent.com/KennethDoerflein/k2-plus-custom-firmware/main/bootstrap', '/usr/bin/bootstrap')" && chmod +x /usr/bin/bootstrap
-   bootstrap --replace
+   /mnt/UDISK/bootstrap --replace
    ```
+   *(Running `/mnt/UDISK/bootstrap` automatically installs itself to `/usr/bin/bootstrap`, permanently replacing Jacob's old script. If you already flashed previously without this update, you can manually fetch it first via `python3 -c "import urllib.request; urllib.request.urlretrieve('https://raw.githubusercontent.com/KennethDoerflein/k2-plus-custom-firmware/main/bootstrap', '/usr/bin/bootstrap')" && chmod +x /usr/bin/bootstrap`)*
 
 ### Understanding `bootstrap --replace`
 

@@ -20,11 +20,11 @@ After the printer starts again, connect it to the network:
 - Wi-Fi: use the printer screen only far enough to join the network.
 
 Then SSH into the printer and run:
- 
+
 ```sh
-python3 -c "import urllib.request; urllib.request.urlretrieve('https://raw.githubusercontent.com/KennethDoerflein/k2-plus-custom-firmware/main/bootstrap', '/usr/bin/bootstrap')" && chmod +x /usr/bin/bootstrap
-bootstrap
+/mnt/UDISK/bootstrap
 ```
+*(Running `/mnt/UDISK/bootstrap` will automatically install itself to `/usr/bin/bootstrap`, so for all future runs you can simply type `bootstrap`.)*
 
 When bootstrap finishes, Fluidd is available on port `4408` and Mainsail on
 port `4409` at the printer's IP address.
