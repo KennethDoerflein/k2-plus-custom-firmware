@@ -1170,17 +1170,18 @@ class Box:
 
     def cmd_slot_clear(self, gcmd):
         slot_raw = self._param(gcmd, "SLOT")
-        if slot_raw and slot_raw.strip().upper() == "ALL":
+        if slot_raw is not None and str(slot_raw).strip().upper() == "ALL":
             for s in self.physical_slots:
                 self.clear_profile(s)
             self.clear_profile(self.external_slot)
             self._info(gcmd, "Cleared all slot profiles")
             return
-        slot = gcmd.get_int(
-            "SLOT", None, minval=0,
-            maxval=MAX_ADDRESSES * SLOTS_PER_BOX)
-        if slot is None:
+        if not slot_raw:
             raise gcmd.error("[BOX]: SLOT is required (or SLOT=ALL)")
+        try:
+            slot = int(str(slot_raw).strip())
+        except (ValueError, TypeError):
+            raise gcmd.error("[BOX]: Invalid SLOT '%s' (must be integer or ALL)" % slot_raw)
         if not self.is_valid_slot(slot):
             raise gcmd.error("[BOX]: T%d is not an online box slot" % slot)
         self.clear_profile(slot)
