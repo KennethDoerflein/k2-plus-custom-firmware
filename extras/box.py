@@ -754,6 +754,10 @@ class Box:
             "loaded_slot": snap.loaded_slot,
             "loaded_mask": snap.loaded_mask,
             "slot_filament_mask": snap.slot_mask,
+            "tool_routing": {
+                str(tool): slot
+                for tool, slot in sorted(self.tool_routing.items())
+            },
             "slots": slots,
             "materials": self.store.materials,
             "runout": self._runout_status(physical, snap),
