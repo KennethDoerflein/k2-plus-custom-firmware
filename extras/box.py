@@ -853,6 +853,8 @@ class Box:
         self.store.set_profile(self._runtime_slot_key(slot), profile)
 
     def clear_profile(self, slot):
+        if self.snapshot.loaded_slot == slot or slot == self.last_loaded_slot:
+            self.clear_active_spool(slot)
         self.store.clear_profile(self._runtime_slot_key(slot))
 
     def _runtime_slot_key(self, slot):
@@ -936,10 +938,8 @@ class Box:
         if spoolman_id is not None:
             self._set_active_spool(int(spoolman_id))
 
-    def clear_active_spool(self, slot):
-        if (self.is_valid_slot(slot)
-                and self.profile(slot)["spoolman_id"] is not None):
-            self._set_active_spool(None)
+    def clear_active_spool(self, slot=None):
+        self._set_active_spool(None)
 
     def _set_active_spool(self, spool_id):
         try:
@@ -1169,11 +1169,18 @@ class Box:
         self._info(gcmd, "Saved T%d profile" % slot)
 
     def cmd_slot_clear(self, gcmd):
+        slot_raw = self._param(gcmd, "SLOT")
+        if slot_raw and slot_raw.strip().upper() == "ALL":
+            for s in self.physical_slots:
+                self.clear_profile(s)
+            self.clear_profile(self.external_slot)
+            self._info(gcmd, "Cleared all slot profiles")
+            return
         slot = gcmd.get_int(
             "SLOT", None, minval=0,
             maxval=MAX_ADDRESSES * SLOTS_PER_BOX)
         if slot is None:
-            raise gcmd.error("[BOX]: SLOT is required")
+            raise gcmd.error("[BOX]: SLOT is required (or SLOT=ALL)")
         if not self.is_valid_slot(slot):
             raise gcmd.error("[BOX]: T%d is not an online box slot" % slot)
         self.clear_profile(slot)

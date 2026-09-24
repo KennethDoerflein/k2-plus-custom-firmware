@@ -318,6 +318,7 @@ class BoxChangeEngine:
                 heater_used = True
                 self._unload_external(
                     gcmd, None, fault_generation)
+                self._clear_active_spool(self.box.external_slot)
 
             self._check_abort(fault_generation)
             if heater_used:
