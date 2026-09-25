@@ -1,22 +1,14 @@
 # Calibration
 
-The default configuration expects the 5.8 mm Y-endstop spacer and the
-Cartographer mount used by K2 Improvements.
+The default configuration expects the stock Creality PRTouch strain gauges for bed probing.
 
 ## Required after installation
 
 These are the only calibration steps required for the default setup.
 
-### 1. Calibrate Cartographer
+### 1. Probe Calibration (PRTouch)
 
-```gcode
-G28
-CARTOGRAPHER_TOUCH_CALIBRATE METHOD=touch
-CARTOGRAPHER_SCAN_CALIBRATE
-```
-
-The default probe mode is `prtouch`. If you changed modes, use the matching
-instructions under [Probe modes](#probe-modes) instead.
+The default probe mode is `prtouch`. **No manual probe calibration is required.** The PRTouch strain gauges automatically establish nozzle Z=0 dynamically during probing.
 
 ### 2. Calibrate the cutter
 
@@ -31,63 +23,15 @@ SHAPER_CALIBRATE
 SAVE_CONFIG
 ```
 
-The analysis step can take a while because the printer's SoC is slow at
-processing resonance data.
+The analysis step can take a while because the printer's SoC is slow at processing resonance data.
 
 ## Other calibration and maintenance
 
 Nothing below is part of the normal initial setup.
 
-### Probe modes
-
-Check the current mode:
-
-```sh
-bootstrap --probe
-```
-
-Switch modes:
-
-```sh
-bootstrap --probe carto
-bootstrap --probe mix
-bootstrap --probe prtouch
-```
-
-- `carto`: Cartographer only
-- `mix`: Cartographer scans the bed; PRTouch establishes nozzle Z=0
-- `prtouch`: PRTouch only
-
-Bootstrap updates the probe configuration and restarts Klipper automatically.
-Cartographer and mixed modes expect the 5.8 mm Y-endstop spacer. PRTouch-only
-mode does not.
-
-#### Mixed-mode calibration
-
-First, home the printer:
-
-```gcode
-G28
-```
-
-Wait for homing to finish, then run:
-
-```gcode
-PRTOUCH_SCAN_CALIBRATE
-```
-
-This uses PRTouch to calibrate the Cartographer scan model. It does not
-calibrate PRTouch itself.
-
-#### PRTouch-only mode
-
-No probe calibration is required.
-
 ### Motor calibration
 
-The firmware will tell you when a motor is uncalibrated and needs
-`MOTOR_CALIBRATE`. It is also worth trying when troubleshooting print or motor
-issues.
+The firmware will tell you when a motor is uncalibrated and needs `MOTOR_CALIBRATE`. It is also worth trying when troubleshooting print or motor issues.
 
 For X, Y, Z, or Z1:
 
@@ -95,9 +39,7 @@ For X, Y, Z, or Z1:
 MOTOR_CALIBRATE AXIS=X
 ```
 
-The first run does not calibrate anything. It disables the motors and asks you
-to place the printhead near the middle and the bed at the bottom. Move them
-there by hand, then run the same command again.
+The first run does not calibrate anything. It disables the motors and asks you to place the printhead near the middle and the bed at the bottom. Move them there by hand, then run the same command again.
 
 Extruder calibration is two-stage and must be run with filament unloaded:
 
@@ -119,12 +61,9 @@ Use `BELT_TENSION AXES=X` or `BELT_TENSION AXES=Y` to tension one axis.
 
 #### Belt tension sensor recalibration
 
-Do not run this as routine setup. It is only for incorrect tension readings or
-specific troubleshooting, and requires the [printed calibration jig](https://www.crealitycloud.com/model-detail/belt-tensioning-module-calibration-tool). Normal
-automatic belt tensioning does not require it.
+Do not run this as routine setup. It is only for incorrect tension readings or specific troubleshooting, and requires the [printed calibration jig](https://www.crealitycloud.com/model-detail/belt-tensioning-module-calibration-tool). Normal automatic belt tensioning does not require it.
 
-Home and park the carriage where the middle of the selected belt is accessible,
-then capture the normal and jig loads:
+Home and park the carriage where the middle of the selected belt is accessible, then capture the normal and jig loads:
 
 ```gcode
 BELT_TENSION_CALIBRATE AXIS=X POINT=LOW
