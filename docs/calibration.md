@@ -29,6 +29,38 @@ The analysis step can take a while because the printer's SoC is slow at processi
 
 Nothing below is part of the normal initial setup.
 
+### Probe modes
+
+The default probe mode is **PRTouch-only** (`prtouch`). 
+If you wish to use an aftermarket Cartographer probe, you can switch modes using the bootstrap script:
+
+Check the current mode:
+```sh
+bootstrap --probe
+```
+
+Switch modes:
+```sh
+bootstrap --probe prtouch
+bootstrap --probe mix
+bootstrap --probe carto
+```
+
+- `prtouch` (Default): PRTouch only. No probe calibration required.
+- `mix`: Cartographer scans the bed; PRTouch establishes nozzle Z=0.
+- `carto`: Cartographer only.
+
+*(Note: Cartographer and mixed modes expect the 5.8 mm Y-endstop spacer. PRTouch-only mode does not.)*
+
+#### Cartographer & Mixed-mode calibration
+If you switch to `carto` or `mix`, you must calibrate the Cartographer probe:
+```gcode
+G28
+CARTOGRAPHER_TOUCH_CALIBRATE METHOD=touch
+CARTOGRAPHER_SCAN_CALIBRATE
+```
+For `mix` mode, follow up with `PRTOUCH_SCAN_CALIBRATE` after homing.
+
 ### Motor calibration
 
 The firmware will tell you when a motor is uncalibrated and needs `MOTOR_CALIBRATE`. It is also worth trying when troubleshooting print or motor issues.

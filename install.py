@@ -458,8 +458,15 @@ def _release_dir_from_extract(extract_dir):
 
 
 def _chmod_helix_release(release_dir):
-    for root, _, files in os.walk(os.path.join(release_dir, "bin")):
+    bin_dir = os.path.join(release_dir, "bin")
+    for root, _, files in os.walk(release_dir):
         for file in files:
+            if not (
+                file.endswith(".sh")
+                or root == bin_dir
+                or root.startswith(bin_dir + os.sep)
+            ):
+                continue
             path = os.path.join(root, file)
             os.chmod(path, os.stat(path).st_mode | 0o755)
 
