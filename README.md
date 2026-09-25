@@ -78,7 +78,7 @@ The `/mnt/UDISK` partition is shared storage and persists across firmware instal
 
 #### What `--replace` does
 Running `bootstrap --replace`:
-1. **Deletes and reclones** Klipper, Moonraker, Fluidd, and Mainsail from Kenneth's hardened repositories instead of Jacob's.
+1. **Deletes and reclones** Klipper, Moonraker, Fluidd, and Mainsail from this fork's hardened repositories instead of Jacob's.
 2. **Recreates** the Python virtual environments (`klippy-env`, `moonraker-env`) cleanly.
 3. **Automatically backs up your configuration files**: Before replacing `/mnt/UDISK/printer_data/config`, `bootstrap` moves all existing configuration files into:
    ```
