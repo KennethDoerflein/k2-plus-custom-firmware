@@ -12,6 +12,7 @@ import sys
 import tarfile
 import time
 import urllib.request
+import zipfile
 import binascii
 from contextlib import contextmanager
 
@@ -22,12 +23,12 @@ ROOTFS_SHA256 = "ded633761c625a5cfdc673f2d9b9165874131990d21783e35c6eaa0882f863c
 KERNEL_SHA256 = "d0244555154bc2498e80ecf746198f0bfea3e698695058b0e2f3a483081222f0"
 SWAP_SHA256 = "4f207a7cde1382a9d9abf4cb171070253e183afc309af15c44ee049c08532cc4"
 HELIX_VERSION = "v1.0.2"
-HELIX_ARCHIVE = f"helixscreen-k2-{HELIX_VERSION}.tar.gz"
+HELIX_ARCHIVE = "helixscreen-k2.zip"
 HELIX_URL = (
     "https://github.com/prestonbrown/helixscreen/releases/download/"
     f"{HELIX_VERSION}/{HELIX_ARCHIVE}"
 )
-HELIX_SHA256 = "30bf36374be7cec112101fff91e68bd5580a03d21e6e3e6fafacb973e9257ab4"
+HELIX_SHA256 = "a54f3504d42eba2ab130089d1cb7b47b0540109c903575097a5e2ce8d1fad725"
 
 # Download from GitHub Releases (supports files >100MB)
 ROOTFS_URL = f"{BASE_URL}/v{FIRMWARE_VERSION}/rootfs.ext2"
@@ -433,24 +434,15 @@ def install_swap(script_path):
     subprocess.run(["sync"], check=True)
 
 
-def _safe_extract_tar(archive_path, dest_dir, label):
+def _safe_extract_zip(archive_path, dest_dir, label):
     dest_dir = os.path.abspath(dest_dir)
     os.makedirs(dest_dir, exist_ok=True)
-    with tarfile.open(archive_path, "r:gz") as tf:
-        members = tf.getmembers()
-        for member in members:
-            target = os.path.abspath(os.path.join(dest_dir, member.name))
+    with zipfile.ZipFile(archive_path, "r") as zf:
+        for member in zf.infolist():
+            target = os.path.abspath(os.path.join(dest_dir, member.filename))
             if os.path.commonpath([dest_dir, target]) != dest_dir:
-                die(f"{label} archive contains unsafe path {member.name!r}")
-            if not (member.isdir() or member.isfile() or member.issym()):
-                die(f"{label} archive contains unsupported entry {member.name!r}")
-            if member.issym():
-                link_target = os.path.abspath(
-                    os.path.join(os.path.dirname(target), member.linkname)
-                )
-                if os.path.commonpath([dest_dir, link_target]) != dest_dir:
-                    die(f"{label} archive contains unsafe symlink {member.name!r}")
-        tf.extractall(dest_dir, members)
+                die(f"{label} archive contains unsafe path {member.filename!r}")
+        zf.extractall(dest_dir)
 
 
 def _release_dir_from_extract(extract_dir):
@@ -464,6 +456,12 @@ def _release_dir_from_extract(extract_dir):
             return candidate
     return extract_dir
 
+
+def _chmod_helix_release(release_dir):
+    for root, _, files in os.walk(os.path.join(release_dir, "bin")):
+        for file in files:
+            path = os.path.join(root, file)
+            os.chmod(path, os.stat(path).st_mode | 0o755)
 
 def _validate_helix_release(release_dir):
     required = [
@@ -516,8 +514,9 @@ def seed_custom_helix_archive(archive_path):
             shutil.rmtree(path, ignore_errors=True)
 
     log("extracting HelixScreen archive")
-    _safe_extract_tar(archive_path, extract_dir, "HelixScreen")
+    _safe_extract_zip(archive_path, extract_dir, "HelixScreen")
     release_dir = _release_dir_from_extract(extract_dir)
+    _chmod_helix_release(release_dir)
     _validate_helix_release(release_dir)
 
     os.makedirs(CUSTOM_SLOT_DIR, exist_ok=True)
@@ -525,9 +524,9 @@ def seed_custom_helix_archive(archive_path):
     shutil.copytree(release_dir, new_dir, symlinks=True)
     _preserve_existing_helix_state(CUSTOM_HELIX_DIR, new_dir)
 
+    if os.path.exists(CUSTOM_HELIX_DIR):
+        os.replace(CUSTOM_HELIX_DIR, old_dir)
     try:
-        if os.path.exists(CUSTOM_HELIX_DIR):
-            os.replace(CUSTOM_HELIX_DIR, old_dir)
         os.replace(new_dir, CUSTOM_HELIX_DIR)
     except OSError:
         if os.path.exists(CUSTOM_HELIX_DIR):

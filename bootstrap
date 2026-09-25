@@ -12,7 +12,7 @@ The script is intentionally conservative. Existing install directories cause a
 failure unless --replace is passed.
 """
 
-from __future__ import annotations
+from typing import List, Dict, Optional, Union, Tuple, Any
 
 import argparse
 import hashlib
@@ -125,10 +125,10 @@ def step(title: str):
 
 
 def run(
-    cmd: list[str],
+    cmd: List[str],
     *,
-    env: dict[str, str] | None = None,
-    retry_label: str | None = None,
+    env: Optional[Dict[str, str]] = None,
+    retry_label: Optional[str] = None,
 ) -> None:
     log("$ " + " ".join(cmd))
     def attempt() -> None:
@@ -214,7 +214,7 @@ def prepare_path(path: Path, *, replace: bool) -> None:
         path.unlink()
 
 
-def preflight_bootstrap(*, replace: list[str] | None) -> None:
+def preflight_bootstrap(*, replace: Optional[List[str]]) -> None:
     require_root()
     require_udisk()
     require_tool("python3")
@@ -241,7 +241,7 @@ def preflight_update_extras() -> None:
         raise SystemExit(f"missing existing Klipper extras directory: {extras_dir}")
 
 
-def clone_repo(url: str, dest: Path, *, branch: str | None, replace: bool) -> bool:
+def clone_repo(url: str, dest: Path, *, branch: Optional[str], replace: bool) -> bool:
     if dest.exists() and not replace:
         log(f"{dest.name} already exists; skipping clone")
         return False
@@ -268,7 +268,7 @@ def clone_repo(url: str, dest: Path, *, branch: str | None, replace: bool) -> bo
     return True
 
 
-def pip_env(venv: Path) -> dict[str, str]:
+def pip_env(venv: Path) -> Dict[str, str]:
     env = os.environ.copy()
     env["PIP_ONLY_BINARY"] = ":all:"
     env["PIP_DISABLE_PIP_VERSION_CHECK"] = "1"
@@ -305,7 +305,7 @@ def ensure_pip_executable(venv: Path) -> None:
     log(f"created pip wrapper at {pip}")
 
 
-def pip_install_requirements(venv: Path, requirements: list[Path], *extra_packages: str) -> None:
+def pip_install_requirements(venv: Path, requirements: List[Path], *extra_packages: str) -> None:
     for requirement in requirements:
         if not requirement.is_file():
             raise SystemExit(f"missing requirements file: {requirement}")
@@ -323,7 +323,7 @@ def pip_install_requirements(venv: Path, requirements: list[Path], *extra_packag
     ensure_pip_executable(venv)
 
 
-def latest_release_asset(repo: str, asset_name: str) -> tuple[str, str]:
+def latest_release_asset(repo: str, asset_name: str) -> Tuple[str, str]:
     url = f"https://api.github.com/repos/{repo}/releases/latest"
     log(f"fetching latest release metadata for {repo}")
     def attempt():
@@ -381,7 +381,8 @@ def download_sha256(url: str, dest: Path, expected_sha256: str) -> None:
     download(url, dest)
     actual = file_sha256(dest)
     if actual != expected_sha256:
-        dest.unlink(missing_ok=True)
+        if dest.exists():
+            dest.unlink()
         raise SystemExit(
             f"{dest.name} checksum mismatch: expected {expected_sha256}, got {actual}"
         )
@@ -443,7 +444,7 @@ def release_index_file_sha256(index: dict, key: str) -> str:
     return digest
 
 
-def install_bootstrap_update(index: dict | None = None) -> bool:
+def install_bootstrap_update(index: Optional[dict] = None) -> bool:
     index = index or fetch_release_index()
     digest = release_index_file_sha256(index, "bootstrap")
     if BOOTSTRAP_INSTALL_PATH.is_file() and file_sha256(BOOTSTRAP_INSTALL_PATH) == digest:
@@ -462,8 +463,8 @@ def install_bootstrap_update(index: dict | None = None) -> bool:
         os.replace(tmp_path, BOOTSTRAP_INSTALL_PATH)
         return True
     finally:
-        if tmp_path is not None:
-            tmp_path.unlink(missing_ok=True)
+        if tmp_path is not None and tmp_path.exists():
+            tmp_path.unlink()
 
 
 def extract_zip(zip_path: Path, dest: Path, *, replace: bool) -> None:
@@ -554,7 +555,7 @@ def install_helixscreen() -> None:
     refresh_helix_units()
 
 
-def service_control(action: str, services: list[str]) -> None:
+def service_control(action: str, services: List[str]) -> None:
     if shutil.which("systemctl") is None:
         return
     for svc in services:
@@ -630,7 +631,7 @@ def install_webcam() -> None:
     log(f"registered webcam 'Front' ({ip}) uid={uid}")
 
 
-def backup_config_dir() -> Path | None:
+def backup_config_dir() -> Optional[Path]:
     """Move existing configs into config_backups/<timestamp> instead of deleting them."""
     if CONFIG_DIR.is_symlink() or (CONFIG_DIR.exists() and not CONFIG_DIR.is_dir()):
         log(f"removing non-directory {CONFIG_DIR}")
@@ -668,7 +669,7 @@ def install_k2_configs() -> None:
 SAVE_CONFIG_MARKER = "#*# <---------------------- SAVE_CONFIG ---------------------->"
 
 
-def split_save_config(text: str) -> tuple[str, str | None]:
+def split_save_config(text: str) -> Tuple[str, Optional[str]]:
     idx = text.find(SAVE_CONFIG_MARKER)
     if idx < 0:
         return text, None
@@ -699,7 +700,7 @@ def install_timelapse() -> None:
     log(f"wrote {dest}")
 
 
-def install_kalico_extras() -> list[Path]:
+def install_kalico_extras() -> List[Path]:
     extras_dir = ROOT / "klipper" / "klippy" / "extras"
     extras_dir.mkdir(parents=True, exist_ok=True)
 
@@ -784,7 +785,7 @@ def _probe_stack_pattern() -> re.Pattern[str]:
     )
 
 
-def _read_printer_cfg() -> tuple[Path, str]:
+def _read_printer_cfg() -> Tuple[Path, str]:
     printer_cfg = CONFIG_DIR / "printer.cfg"
     if not printer_cfg.is_file():
         raise SystemExit(f"missing config file: {printer_cfg}")
@@ -805,7 +806,7 @@ def _include_active(block: str, filename: str) -> bool:
     return False
 
 
-def _get_rap(path: Path) -> bool | None:
+def _get_rap(path: Path) -> Optional[bool]:
     if not path.is_file():
         return None
     match = re.search(r"^register_as_probe\s*:\s*(\S+)", path.read_text(encoding="utf-8"), re.M)
@@ -842,7 +843,7 @@ def _validate_probe_config(path: Path) -> None:
         raise SystemExit(f"register_as_probe not found in {path}")
 
 
-def get_probe_mode() -> str | None:
+def get_probe_mode() -> Optional[str]:
     _printer_cfg, text = _read_printer_cfg()
     match = _probe_stack_pattern().search(text)
     assert match is not None  # validated by _read_printer_cfg

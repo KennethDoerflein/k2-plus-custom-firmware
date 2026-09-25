@@ -278,7 +278,7 @@ class BoxStore:
                 uid = bytes.fromhex(value)
             except (TypeError, ValueError):
                 raise BoxError("Invalid box address entry %r" % key)
-            if not 1 <= address <= 4 or len(uid) != 12 or not any(uid):
+            if not 1 <= address <= MAX_ADDRESSES or len(uid) != 12 or not any(uid):
                 raise BoxError("Invalid box identity at address %s" % key)
             result[str(address)] = uid.hex()
         return result
@@ -648,6 +648,17 @@ class Box:
                     "online CFS slot" % (slicer_tool, physical_slot,
                                           physical_slot))
             new_routing[slicer_tool] = physical_slot
+            
+            cmd_name = "T%d" % slicer_tool
+            if not self.gcode.is_command_registered(cmd_name):
+                self.gcode.register_command(
+                    cmd_name,
+                    lambda gcmd, st=slicer_tool: self.change_engine.change(
+                        gcmd,
+                        self.tool_routing.get(st, st),
+                        bool(gcmd.get_int("FLUSH", 1))),
+                    desc="Change to box slot T%d (routed)" % slicer_tool,
+                )
 
         if not new_routing:
             raise gcmd.error(
