@@ -27,6 +27,8 @@ Klipper and Cartographer commands remain in their own documentation.
 | `BOX_DEBUG [RAW=0\|1]` | Prints complete Box, topology, slot, sensor, and RFID diagnostics. |
 | `BOX_RUNOUT_CHECK` | Handles a printhead-sensor runout event. |
 | `PARSE_FLUSH_VOLUMES` | Reads the slicer's flush matrix from the loaded G-code file. |
+| `BOX_SET_ROUTING T0=<slot> [T1=<slot> ...]` | Routes slicer tools to physical CFS slots for the current print. |
+| `BOX_CLEAR_ROUTING` | Clears custom tool routing and restores 1:1 tool-to-slot mapping. |
 | `_BOX_RESUME_CHECK [RETRY=0\|1]` | Validates or recovers Box state before resume. |
 | `_FLUSH_CLEAN_SNAP [RETRACT=0\|1]` | Runs the internal flush, snap, and clean sequence. |
 

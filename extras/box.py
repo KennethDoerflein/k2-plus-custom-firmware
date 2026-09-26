@@ -438,6 +438,7 @@ class Box:
         self.address_errors = ()
         self.drivers_ready = False
         self.snapshot = BoxSnapshot(loaded_slot=None)
+        self._sync_lane_data_async()
         self.operation_depth = 0
         self.tracking_epoch = 0
         self.tracking_owner = None
@@ -508,6 +509,8 @@ class Box:
                 "print_stats:cancelled_printing"):
             self.printer.register_event_handler(
                 event, self._reset_tool_routing)
+        self.printer.register_event_handler(
+            "virtual_sdcard:reset_file", self._reset_tool_routing)
 
     # ------------------------------------------------------------------
     # Lifecycle and public status
@@ -866,11 +869,13 @@ class Box:
 
     def set_profile(self, slot, profile):
         self.store.set_profile(self._runtime_slot_key(slot), profile)
+        self._sync_lane_data_async()
 
     def clear_profile(self, slot):
         if self.snapshot.loaded_slot == slot or slot == self.last_loaded_slot:
             self.clear_active_spool(slot)
         self.store.clear_profile(self._runtime_slot_key(slot))
+        self._sync_lane_data_async()
 
     def _runtime_slot_key(self, slot):
         if slot == EXTERNAL_PROFILE_KEY or slot == self.external_slot:
@@ -891,6 +896,47 @@ class Box:
     def filament_identity(self, slot):
         profile = self.profile(slot)
         return profile["material"], profile["color"]
+
+    def _sync_lane_data_async(self):
+        def worker():
+            try:
+                import urllib.request
+                import json
+                snap = self.snapshot
+                physical = self._slot_statuses(snap)
+                slots = physical + [self._external_status(snap)]
+
+                for slot in slots:
+                    if not slot['present'] or not slot['material']:
+                        value = {}
+                    else:
+                        color = slot['color'] or ""
+                        if color.startswith("#"):
+                            color = color[1:]
+                        value = {
+                            "lane": str(slot['index']),
+                            "color": color,
+                            "material": slot['material'] or "",
+                            "nozzle_temp": 220,
+                            "bed_temp": 60
+                        }
+
+                    body = json.dumps({
+                        "namespace": "lane_data",
+                        "key": f"lane{slot['index']}",
+                        "value": value
+                    }).encode()
+
+                    req = urllib.request.Request(
+                        "http://127.0.0.1:7125/server/database/item", data=body,
+                        headers={"Content-Type": "application/json"}, method="POST")
+                    with urllib.request.urlopen(req, timeout=2.0) as response:
+                        pass
+            except Exception:
+                pass
+
+        import threading
+        threading.Thread(target=worker).start()
 
     def hotend_filament(self):
         value = self.store.setting("hotend_filament")
@@ -2465,7 +2511,10 @@ class Box:
             buffer_status=buffer_reply.status if buffer_reply else None,
             buffer_state=buffer_reply.value if buffer_reply else None,
         )
+        prev_mask = self.snapshot.slot_mask if self.snapshot is not None else None
         self.snapshot = snap
+        if prev_mask is not None and prev_mask != snap.slot_mask:
+            self._sync_lane_data_async()
         return snap
 
     def _poll(self, eventtime):
