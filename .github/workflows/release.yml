@@ -18,6 +18,11 @@ jobs:
         with:
           lfs: true
       
+      - name: Repackage rootfs.ext2
+        run: |
+          chmod +x scripts/repack_rootfs.sh
+          sudo ./scripts/repack_rootfs.sh
+
       - name: Release Firmware Binaries
         uses: softprops/action-gh-release@v2
         with:
