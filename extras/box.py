@@ -653,7 +653,12 @@ class Box:
             new_routing[slicer_tool] = physical_slot
             
             cmd_name = "T%d" % slicer_tool
-            if not self.gcode.is_command_registered(cmd_name):
+            is_registered = (
+                self.gcode.is_command_registered(cmd_name)
+                if hasattr(self.gcode, "is_command_registered")
+                else cmd_name in self.gcode.ready_gcode_handlers
+            )
+            if not is_registered:
                 self.gcode.register_command(
                     cmd_name,
                     lambda gcmd, st=slicer_tool: self.change_engine.change(
