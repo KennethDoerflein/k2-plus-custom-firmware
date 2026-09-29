@@ -1,7 +1,7 @@
 {
   "bootstrap": {
-    "sha256": "5f81ef4012d214f040d68877544787b3080fe3e06c0789c0cc6af7286ab764a9",
-    "size": 42586
+    "sha256": "202cdd7a4b6c4978367fa2d97b08beb94e91aabce8e4d7e742b9dc38a65c4003",
+    "size": 42634
   },
   "extras": {
     "manifest_sha256": "040ca62d8f7fd536938199a329904e1390c4d0ace890fe83297dd77f1bd1484a",

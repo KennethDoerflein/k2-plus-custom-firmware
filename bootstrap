@@ -58,7 +58,7 @@ MOONRAKER_ASVC = "klipper_mcu\nhelixscreen\nustreamer@stockcam\n"
 TIMELAPSE_URL = "https://raw.githubusercontent.com/mainsail-crew/moonraker-timelapse/main/component/timelapse.py"
 FIRMWARE_BASE_URL = "https://github.com/KennethDoerflein/k2-plus-custom-firmware/releases/download"
 FIRMWARE_VERSION = "6.18"
-RELEASE_INDEX_URL = f"{FIRMWARE_BASE_URL}/v{FIRMWARE_VERSION}/index"
+RELEASE_INDEX_URL = f"https://raw.githubusercontent.com/{FIRMWARE_REPO.replace('https://github.com/', '')}/{FIRMWARE_BRANCH}/index"
 BOOTSTRAP_INSTALL_PATH = Path("/usr/bin/bootstrap")
 TIMEZONE_URL = "http://ip-api.com/line?fields=timezone"
 NETWORK_ATTEMPTS = 3
@@ -458,7 +458,8 @@ def install_bootstrap_update(index: Optional[dict] = None) -> bool:
         ) as tmp:
             tmp_path = Path(tmp.name)
         log("updating bootstrap")
-        download_sha256(object_url(digest), tmp_path, digest)
+        bootstrap_url = f"https://raw.githubusercontent.com/{FIRMWARE_REPO.replace('https://github.com/', '')}/{FIRMWARE_BRANCH}/bootstrap"
+        download_sha256(bootstrap_url, tmp_path, digest)
         tmp_path.chmod(0o755)
         os.replace(tmp_path, BOOTSTRAP_INSTALL_PATH)
         return True
@@ -1081,16 +1082,14 @@ def main() -> None:
 
         header("K2 Update")
         if update_bootstrap:
-            # Disabled: bootstrap self-update (self-hosted mode)
-            # require_root()
-            # index = fetch_release_index()
-            # with step("Updating bootstrap"):
-            #     bootstrap_changed = install_bootstrap_update(index)
-            # if bootstrap_changed and (update_extras or update_configs):
-            #     log("Relaunching updated bootstrap...")
-            #     os.execv(sys.argv[0], sys.argv)
-            #     return
-            log("Bootstrap self-update disabled (self-hosted mode)")
+            require_root()
+            index = fetch_release_index()
+            with step("Updating bootstrap"):
+                bootstrap_changed = install_bootstrap_update(index)
+            if bootstrap_changed and (update_extras or update_configs):
+                log("Relaunching updated bootstrap...")
+                os.execv(sys.argv[0], sys.argv)
+                return
 
         if update_extras:
             preflight_update_extras()
