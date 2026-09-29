@@ -924,6 +924,21 @@ def set_probe_mode(mode: str, *, restart: bool = True, quiet: bool = False) -> b
 
 
 def update_k2_configs() -> None:
+    klipper_repo = ROOT / "klipper"
+    if (klipper_repo / ".git").is_dir():
+        log("Pulling latest Kalico changes from GitHub...")
+        try:
+            subprocess.run(
+                ["git", "fetch", "--depth", "1", "origin", KALICO_BRANCH],
+                cwd=klipper_repo, check=True,
+            )
+            subprocess.run(
+                ["git", "reset", "--hard", f"origin/{KALICO_BRANCH}"],
+                cwd=klipper_repo, check=True,
+            )
+        except subprocess.CalledProcessError as exc:
+            log_warn(f"Failed to update kalico repo: {exc}")
+
     src = ROOT / "klipper" / "config" / "k2"
     if not src.is_dir():
         raise SystemExit(f"k2 config dir not found: {src}")
