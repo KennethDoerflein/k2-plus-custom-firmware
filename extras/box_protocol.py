@@ -30,6 +30,20 @@ CMD_RFID_CONTROL = 0x0D
 CMD_ENCODER = 0x0E
 CMD_LOAD = 0x10
 CMD_UNLOAD = 0x11
+CMD_DRY_SET = 0x18
+CMD_DRY_STOP = 0x19
+
+DEV_TYPE_CFS = 1
+DEV_TYPE_CFS_PRO = 2
+
+DRYER_FLAG_AC_CONNECTED = 0x01
+DRYER_FLAG_CH0_HEATING = 0x04
+DRYER_FLAG_CH1_HEATING = 0x08
+
+DRYER_CH0 = 0
+DRYER_CH1 = 1
+DRYER_CH_BOTH = 2
+
 
 AUTO_ASSIGN = 0xA0
 AUTO_DISCOVER = 0xA1
@@ -277,6 +291,16 @@ class BoxStateReply(Reply):
     box_state: object
     downstream_mask: object
     slot_events: object
+    dryer_supported: bool = False
+    ac_connected: bool = False
+    ch0_heating: bool = False
+    ch0_target_temp: int = 0
+    ch0_remaining_time: int = 0
+    ch0_cur_temp: int = 0
+    ch1_heating: bool = False
+    ch1_target_temp: int = 0
+    ch1_remaining_time: int = 0
+    ch1_cur_temp: int = 0
 
 
 @dataclass(frozen=True)
@@ -293,6 +317,7 @@ class RfidRemainingReply(Reply):
 @dataclass(frozen=True)
 class AutoAddressReply:
     uniid: bytes
+    device_type: int = 1
 
 
 def _protocol_error(message, reply=None, context=None):
@@ -429,17 +454,20 @@ def decode_unload_reply(frame, address, phase):
 def decode_box_state(frame, address):
     reply = decode_reply(frame, address, CMD_BOX_STATE)
     empty = (None, None, None, None)
+    dryer_empty = (False, False, False, 0, 0, 0, False, 0, 0, 0)
     if reply.status in WIRE_ERROR_STATUSES:
         if reply.payload:
             _protocol_error("wire-error box-state response has a payload", reply)
         values = empty
         events = None
+        dryer_info = dryer_empty
     elif reply.status == STATUS_SLOT_EVENT and len(reply.payload) == 4:
         if any(event not in range(4) for event in reply.payload):
             _protocol_error("slot-event response has an unknown event code", reply)
         values = empty
         events = tuple(reply.payload)
-    elif len(reply.payload) == 6:
+        dryer_info = dryer_empty
+    elif len(reply.payload) in (6, 13):
         state = reply.payload[3]
         if state not in range(6):
             _protocol_error("unknown box-state value", reply)
@@ -455,11 +483,27 @@ def decode_box_state(frame, address):
             reply.payload[1], state, reply.payload[4],
         )
         events = None
+        if len(reply.payload) == 13:
+            flags = reply.payload[6]
+            dryer_info = (
+                True,  # dryer_supported
+                bool(flags & DRYER_FLAG_AC_CONNECTED),
+                bool(flags & DRYER_FLAG_CH0_HEATING),
+                reply.payload[7],   # ch0_target_temp
+                reply.payload[8],   # ch0_remaining_time
+                reply.payload[9],   # ch0_cur_temp
+                bool(flags & DRYER_FLAG_CH1_HEATING),
+                reply.payload[10],  # ch1_target_temp
+                reply.payload[11],  # ch1_remaining_time
+                reply.payload[12],  # ch1_cur_temp
+            )
+        else:
+            dryer_info = dryer_empty
     else:
         _protocol_error("box-state payload has the wrong shape", reply)
     return BoxStateReply(
         reply.address, reply.command, reply.status, reply.payload, reply.raw,
-        *values, events,
+        *values, events, *dryer_info,
     )
 
 
@@ -529,8 +573,8 @@ def decode_auto_reply(frame, command, expected_address, expected_uniid=None):
     if reply.status != STATUS_OK or len(reply.payload) != 14:
         _protocol_error("auto-address response has invalid outer status or shape", reply)
     device_type, inner_status = reply.payload[:2]
-    if device_type != 1:
-        _protocol_error("auto-address response device type is not CFS", reply)
+    if device_type not in (DEV_TYPE_CFS, DEV_TYPE_CFS_PRO):
+        _protocol_error("auto-address response device type is not CFS (%d)" % device_type, reply)
     if inner_status != STATUS_OK:
         _protocol_error("auto-address inner status is nonzero", reply)
     uniid = reply.payload[2:]
@@ -538,7 +582,7 @@ def decode_auto_reply(frame, command, expected_address, expected_uniid=None):
         _protocol_error("auto-address UniID is zero", reply)
     if expected_uniid is not None and uniid != _uniid(expected_uniid):
         _protocol_error("auto-address UniID does not match", reply)
-    return AutoAddressReply(uniid)
+    return AutoAddressReply(uniid, device_type)
 
 
 class BoxDriver:
@@ -669,6 +713,37 @@ class BoxDriver:
             return None
         return _command_reply(
             frame, self.address, CMD_RFID_CONTROL, RFID_FORCE_STATUSES)
+
+    def set_dry_mode(self, channel_mask, target_temp, duration_minutes,
+                     mode=0, timeout=DEFAULT_TIMEOUT):
+        if not 1 <= channel_mask <= 3:
+            raise ValueError("channel_mask must be 1 (CH0), 2 (CH1), or 3 (both)")
+        target_temp = _byte(target_temp, "target_temp")
+        mode = _byte(mode, "mode")
+        duration_minutes = int(duration_minutes)
+        if not 0 <= duration_minutes <= 65535:
+            raise ValueError("duration_minutes must be 0..65535")
+        payload = struct.pack("<BBBBH3x", channel_mask, 0, target_temp, mode, duration_minutes)
+        frame = self._exchange(CMD_DRY_SET, payload, timeout)
+        if not frame:
+            return None
+        return _command_reply(
+            frame, self.address, CMD_DRY_SET, COMMAND_STATUSES,
+            "set_dry_mode(ch=%d, temp=%d, time=%d)" % (
+                channel_mask, target_temp, duration_minutes),
+        )
+
+    def stop_dry(self, channel_mask=3, timeout=DEFAULT_TIMEOUT):
+        if not 1 <= channel_mask <= 3:
+            raise ValueError("channel_mask must be 1 (CH0), 2 (CH1), or 3 (both)")
+        payload = (channel_mask, 0, 0, 0)
+        frame = self._exchange(CMD_DRY_STOP, payload, timeout)
+        if not frame:
+            return None
+        return _command_reply(
+            frame, self.address, CMD_DRY_STOP, COMMAND_STATUSES,
+            "stop_dry(ch=%d)" % channel_mask,
+        )
 
 
 class AutoAddressClient:

@@ -47,6 +47,17 @@ Klipper and Cartographer commands remain in their own documentation.
 | `_BOX_RFID_MAP_SET CODE= MATERIAL= BRAND= NAME= [TARGET_TEMP=]` | Saves an unknown-tag mapping. |
 | `_BOX_RFID_MAP_DELETE CODE=` | Deletes an RFID mapping. |
 
+## CFS Dryer
+
+| Command | Behavior |
+| --- | --- |
+| `BOX_SET_DRY_MODE [BOX=1] [CH=0\|1\|2] [SLOT=] [TARGET_TEMP=30..75] [TOTAL_TIME=1..1440] [HOURS=]` | Configures and starts chamber drying. Channels: `0`=Left (slots 0-1), `1`=Right (slots 2-3), `2`=Both (default). |
+| `BOX_GET_DRY_MODE [BOX=1]` | Displays live dryer telemetry, AC power interlock status, temperatures, and remaining time. |
+| `BOX_PAUSE_DRY [BOX=1] [CH=0\|1\|2]` | Pauses active heating for the specified chamber(s). |
+| `CONTINUE_PAUSE_DRY [BOX=1]` | Resumes paused chamber drying using prior setpoints or remaining time. |
+| `BOX_SET_AUTO_DRY_MODE [ENABLE=0\|1]` | Enables or disables automatic drying after print completion. |
+| `BOX_SET_AUTO_HUMIDITY_MODE [ENABLE=0\|1] [THRESHOLD=5..80]` | Enables or disables automatic humidity maintenance (default threshold 25% RH). |
+
 ## Probe commands
 
 | Command | Behavior |
