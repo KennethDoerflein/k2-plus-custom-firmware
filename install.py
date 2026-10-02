@@ -19,7 +19,7 @@ from contextlib import contextmanager
 BASE_URL = "https://github.com/KennethDoerflein/k2-plus-custom-firmware/releases/download"
 FIRMWARE_VERSION = "6.18"
 
-ROOTFS_SHA256 = "18530f4318ab206f9296f8b55ac30d28c02ca16d9d41de4c9a1d4fff64c519f4"
+ROOTFS_SHA256 = None  # fetched dynamically from checksums.txt
 KERNEL_SHA256 = "d0244555154bc2498e80ecf746198f0bfea3e698695058b0e2f3a483081222f0"
 SWAP_SHA256 = "4f207a7cde1382a9d9abf4cb171070253e183afc309af15c44ee049c08532cc4"
 HELIX_VERSION = "v1.0.2"
@@ -34,6 +34,7 @@ HELIX_SHA256 = "a54f3504d42eba2ab130089d1cb7b47b0540109c903575097a5e2ce8d1fad725
 ROOTFS_URL = f"{BASE_URL}/v{FIRMWARE_VERSION}/rootfs.ext2"
 KERNEL_URL = f"{BASE_URL}/v{FIRMWARE_VERSION}/kernel.img"
 SWAP_URL = f"{BASE_URL}/v{FIRMWARE_VERSION}/swap"
+CHECKSUMS_URL = f"{BASE_URL}/v{FIRMWARE_VERSION}/checksums.txt"
 BOOTSTRAP_URL = "https://raw.githubusercontent.com/KennethDoerflein/k2-plus-custom-firmware/main/bootstrap"
 
 ROOTFS_A = "/dev/mmcblk0p6"
@@ -150,6 +151,25 @@ def retry_network(label, action, attempts=NETWORK_ATTEMPTS, delay=NETWORK_DELAY_
             )
             time.sleep(delay)
     raise last_exc
+
+
+def fetch_checksums():
+    """Fetch checksums.txt from the release and return a dict of filename -> sha256."""
+    def attempt():
+        with urllib.request.urlopen(CHECKSUMS_URL) as resp:
+            return resp.read().decode("utf-8")
+
+    try:
+        text = retry_network("fetching checksums", attempt)
+    except Exception as exc:
+        die(f"failed to fetch checksums.txt: {exc}")
+
+    checksums = {}
+    for line in text.strip().splitlines():
+        parts = line.split()
+        if len(parts) == 2:
+            checksums[parts[1]] = parts[0]
+    return checksums
 
 
 def check_root():
@@ -815,8 +835,15 @@ def main():
     helix_path = os.path.join(STAGING_DIR, HELIX_ARCHIVE)
 
     try:
+        with step("Fetching release checksums"):
+            checksums = fetch_checksums()
+            rootfs_sha256 = checksums.get("rootfs.ext2") or ROOTFS_SHA256
+            if not rootfs_sha256:
+                die("rootfs.ext2 checksum not found in checksums.txt")
+            log(f"rootfs.ext2 checksum: {rootfs_sha256}")
+
         with step("Downloading root file system"):
-            download_sha256(ROOTFS_URL, rootfs_path, "root file system", ROOTFS_SHA256)
+            download_sha256(ROOTFS_URL, rootfs_path, "root file system", rootfs_sha256)
         with step("Downloading kernel.img"):
             download_sha256(KERNEL_URL, kernel_path, "kernel", KERNEL_SHA256)
         with step("Downloading swap utility"):

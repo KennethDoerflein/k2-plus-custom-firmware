@@ -1,9 +1,6 @@
 name: Publish Release
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
 
 permissions:
@@ -18,10 +15,11 @@ jobs:
         with:
           lfs: true
       
-      - name: Repackage rootfs.ext2
+      - name: Repackage rootfs.ext2 and Generate Checksums
         run: |
           chmod +x scripts/repack_rootfs.sh
           sudo ./scripts/repack_rootfs.sh
+          sha256sum rootfs.ext2 kernel.img swap > checksums.txt
 
       - name: Release Firmware Binaries
         uses: softprops/action-gh-release@v2
@@ -32,4 +30,5 @@ jobs:
             kernel.img
             swap
             index
+            checksums.txt
           generate_release_notes: true
