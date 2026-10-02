@@ -4,7 +4,7 @@ The default configuration expects the stock Creality PRTouch strain gauges for b
 
 ## Required after installation
 
-These are the only calibration steps required for the default setup.
+### 1. Calibrate the probe
 
 ### 1. Probe Calibration (PRTouch)
 
@@ -20,7 +20,7 @@ CALIBRATE_CUT_POS
 
 ```gcode
 SHAPER_CALIBRATE
-SAVE_CONFIG
+SAVE_CONFIG RESTART=0
 ```
 
 The analysis step can take a while because the printer's SoC is slow at processing resonance data.

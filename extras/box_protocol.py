@@ -18,6 +18,7 @@ DEFAULT_TIMEOUT = 1.0
 POLL_TIMEOUT = 0.1
 RFID_FORCE_SLOT_TIMEOUT = 190.0
 BROADCAST_ADDRESS = 0xFE
+GENERAL_BROADCAST_ADDRESS = 0xFF
 UNIID_LENGTH = 12
 
 CMD_RFID_RECORDS = 0x02
@@ -48,6 +49,10 @@ DRYER_CH_BOTH = 2
 AUTO_ASSIGN = 0xA0
 AUTO_DISCOVER = 0xA1
 AUTO_QUERY = 0xA2
+LOADER_TO_APP = 0x0B
+
+MODE_APP = 0
+MODE_LOADER = 1
 
 STATUS_OK = 0x00
 STATUS_INVALID_PARAM = 0x01
@@ -254,6 +259,18 @@ def status_detail(value):
     if check:
         body += " Check %s." % (check.rstrip("."),)
     return "(%s): %s" % (name, body)
+
+
+SLOTS_PER_BOX = 4
+
+
+def slot_label(slot, external_slot):
+    """User-facing slot name. T numbers are reserved for tool commands."""
+    if slot == external_slot:
+        return "External spool"
+    if isinstance(slot, int) and slot >= 0:
+        return "Box %d, slot %d" % (slot // SLOTS_PER_BOX + 1, slot % SLOTS_PER_BOX + 1)
+    return "unknown slot"
 
 
 def format_failed(prefix, detail):
@@ -777,3 +794,7 @@ class AutoAddressClient:
             BROADCAST_ADDRESS, AUTO_ASSIGN, (address,) + tuple(uniid), timeout)
         return None if not frame else decode_auto_reply(
             frame, AUTO_ASSIGN, address, expected_uniid=uniid)
+
+    def start_app(self, timeout=0.05):
+        return self._exchange(
+            GENERAL_BROADCAST_ADDRESS, LOADER_TO_APP, (1,), timeout)
