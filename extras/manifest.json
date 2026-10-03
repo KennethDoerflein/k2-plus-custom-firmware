@@ -5,8 +5,8 @@
       "size": 22040
     },
     "box.py": {
-      "sha256": "7046bde201d1b90c2f1c48ea2efee8b336c28360ef3e4ce5fb00eaa1a46cae88",
-      "size": 152606
+      "sha256": "1f378af9d59d60a25c48576fb49b8404b5dc10ca9ec0c33f83511807395ba2b6",
+      "size": 152199
     },
     "box_addr.py": {
       "sha256": "09c5597847f58e455d26e9faff459db9279223009820fcf0fa7e900f3c60c530",
@@ -17,8 +17,8 @@
       "size": 4588
     },
     "box_change.py": {
-      "sha256": "a5cc0ee7a06329fe9b72e3426705600f3c4956dfcd0d6fcf2969992a138f4e53",
-      "size": 67241
+      "sha256": "5b52867653ba55dfbd0c2bbd34e97d7d7696be74d64ccd05c01a28617e36d726",
+      "size": 67298
     },
     "box_gcode.py": {
       "sha256": "63e93fc165ad83e34d7cd954a3876f06aad2c1b86802b0cf8b2d6dc74ff6b8e1",

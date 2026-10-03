@@ -146,7 +146,8 @@ class BoxChangeEngine:
     def select_tool(self, gcmd, tool):
         flush = bool(gcmd.get_int("FLUSH", 1))
         if self.mapping_filename is None:
-            return self.change(gcmd, tool, flush, logical_tool=tool)
+            slot = self.box.tool_routing.get(tool, tool)
+            return self.change(gcmd, slot, flush, logical_tool=tool)
         if tool not in self.tool_map:
             reason = "T%d has no slot in this print's mapping" % tool
             if not self._is_print_file_command():

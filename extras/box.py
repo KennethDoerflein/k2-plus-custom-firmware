@@ -668,13 +668,9 @@ class Box:
             if not is_registered:
                 self.gcode.register_command(
                     name,
-                    lambda gcmd, slicer_tool=tool: self.change_engine.change(
-                        gcmd,
-                        # Consult routing table at runtime; default to 1:1
-                        self.tool_routing.get(slicer_tool, slicer_tool),
-                        bool(gcmd.get_int("FLUSH", 1)),
-                        logical_tool=slicer_tool),
-                    desc="Change to box slot T%d" % tool,
+                    lambda gcmd, tool=tool: self.change_engine.select_tool(
+                        gcmd, tool),
+                    desc="Select tool T%d" % tool,
                 )
             self.registered_tools.add(tool)
 
@@ -723,12 +719,9 @@ class Box:
             if not is_registered:
                 self.gcode.register_command(
                     cmd_name,
-                    lambda gcmd, st=slicer_tool: self.change_engine.change(
-                        gcmd,
-                        self.tool_routing.get(st, st),
-                        bool(gcmd.get_int("FLUSH", 1)),
-                        logical_tool=st),
-                    desc="Change to box slot T%d (routed)" % slicer_tool,
+                    lambda gcmd, st=slicer_tool: self.change_engine.select_tool(
+                        gcmd, st),
+                    desc="Select tool T%d (routed)" % slicer_tool,
                 )
             self.registered_tools.add(slicer_tool)
 
