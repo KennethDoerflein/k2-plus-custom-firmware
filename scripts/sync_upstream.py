@@ -64,7 +64,7 @@ def report_overlap(repo, remote, branch):
         print("  (none)")
 
 
-def finish(repo):
+def finish(repo, commit=False, message="chore(upstream): sync upstream changes"):
     root = Path(repo)
     if unmerged(repo):
         sys.exit("Conflicts remain: " + ", ".join(unmerged(repo)))
@@ -81,8 +81,12 @@ def finish(repo):
             cwd=repo).returncode != 0
     if failed:
         sys.exit("\nTests failed: fix them before committing this merge.")
-    print("\nAll checks passed. Review with `git diff --cached`, then run "
-          "`git commit`.")
+    if commit:
+        git(repo, "commit", "-m", message)
+        print("\nAll checks passed and merge committed successfully.")
+    else:
+        print("\nAll checks passed. Review with `git diff --cached`, then run "
+              "`git commit`.")
 
 
 def main():
@@ -92,13 +96,19 @@ def main():
     parser.add_argument("--branch", default="main")
     parser.add_argument("--finish", action="store_true",
                         help="regenerate files and test after resolving")
+    parser.add_argument("--commit", action="store_true",
+                        help="automatically commit the merge if all checks pass")
+    parser.add_argument("-m", "--message", default=None,
+                        help="commit message to use with --commit")
     args = parser.parse_args()
     repo = args.repo
+
+    commit_msg = args.message or f"chore(upstream): merge {args.remote}/{args.branch}"
 
     if args.finish:
         if not merging(repo):
             sys.exit("No merge in progress.")
-        return finish(repo)
+        return finish(repo, commit=args.commit, message=commit_msg)
 
     if lines(git(repo, "status", "--porcelain", "--untracked-files=no")):
         sys.exit("Commit or stash tracked changes first.")
@@ -124,7 +134,7 @@ def main():
         for name in conflicts:
             print("  " + name)
         return 2
-    return finish(repo)
+    return finish(repo, commit=args.commit, message=commit_msg)
 
 
 if __name__ == "__main__":

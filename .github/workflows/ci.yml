@@ -1,0 +1,28 @@
+name: CI & Compatibility Checks
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    name: Compatibility & Release Integrity
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Check Release Checksums & Manifest
+        run: |
+          python scripts/release_index.py --check
+
+      - name: Run Static Compatibility Tests
+        run: |
+          python -m unittest discover -s tests -v
