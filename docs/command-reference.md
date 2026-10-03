@@ -122,3 +122,5 @@ individual tension modules directly.
 | `RESTORE_MOTION_LIMITS [NAME=default] [INCLUDE_GCODE=0\|1] [MOVE=0\|1]` | Restores a saved motion-limit snapshot. |
 | `ZDOWN` | Starts the blocking MCU-assisted Z alignment and rise. |
 | `ZDOWN_FORCE_STOP` | Aborts an active Z alignment. |
+| `SKIP_SOAK` | Skips the active heat soak countdown during `START_PRINT` and immediately continues the print start sequence. |
+| `HEAT_SOAK [SOAK_TIME=min]` | Performs an interruptible heat soak countdown with periodic LCD and console status updates. |
