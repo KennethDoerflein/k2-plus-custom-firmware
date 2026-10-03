@@ -2,6 +2,11 @@ name: Publish Release
 
 on:
   workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Tag to release (e.g., v6.19)'
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -13,6 +18,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
+          ref: ${{ inputs.tag_name }}
           lfs: true
       
       - name: Repackage rootfs.ext2 and Generate Checksums
@@ -24,7 +30,7 @@ jobs:
       - name: Release Firmware Binaries
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_name }}
+          tag_name: ${{ inputs.tag_name }}
           files: |
             rootfs.ext2
             kernel.img
