@@ -531,8 +531,6 @@ class Box:
             self.printer.register_event_handler(
                 event, self._reset_tool_routing)
         self.printer.register_event_handler(
-            "virtual_sdcard:reset_file", self._reset_tool_routing)
-        self.printer.register_event_handler(
             "print_stats:complete_printing", self._on_print_complete_dry)
 
     # ------------------------------------------------------------------
