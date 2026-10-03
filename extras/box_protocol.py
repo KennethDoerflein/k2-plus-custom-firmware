@@ -335,6 +335,7 @@ class RfidRemainingReply(Reply):
 class AutoAddressReply:
     uniid: bytes
     device_type: int = 1
+    mode: int = 0
 
 
 def _protocol_error(message, reply=None, context=None):
@@ -589,17 +590,17 @@ def decode_auto_reply(frame, command, expected_address, expected_uniid=None):
     reply = decode_reply(frame, expected_address, command)
     if reply.status != STATUS_OK or len(reply.payload) != 14:
         _protocol_error("auto-address response has invalid outer status or shape", reply)
-    device_type, inner_status = reply.payload[:2]
+    device_type, mode = reply.payload[:2]
     if device_type not in (DEV_TYPE_CFS, DEV_TYPE_CFS_PRO):
         _protocol_error("auto-address response device type is not CFS (%d)" % device_type, reply)
-    if inner_status != STATUS_OK:
-        _protocol_error("auto-address inner status is nonzero", reply)
+    if mode not in (MODE_APP, MODE_LOADER):
+        _protocol_error("auto-address response mode is invalid", reply)
     uniid = reply.payload[2:]
     if not any(uniid):
         _protocol_error("auto-address UniID is zero", reply)
     if expected_uniid is not None and uniid != _uniid(expected_uniid):
         _protocol_error("auto-address UniID does not match", reply)
-    return AutoAddressReply(uniid, device_type)
+    return AutoAddressReply(uniid, device_type, mode)
 
 
 class BoxDriver:
