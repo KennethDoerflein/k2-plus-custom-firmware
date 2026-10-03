@@ -21,7 +21,7 @@ FIRMWARE_VERSION = "6.18"
 
 ROOTFS_SHA256 = None  # fetched dynamically from checksums.txt
 KERNEL_SHA256 = "d0244555154bc2498e80ecf746198f0bfea3e698695058b0e2f3a483081222f0"
-SWAP_SHA256 = "4f207a7cde1382a9d9abf4cb171070253e183afc309af15c44ee049c08532cc4"
+SWAP_SHA256 = "b29fbcbad0f2b4753847cd7b512a51b41e4e0c14c80e395717c4349093546990"
 HELIX_VERSION = "v1.0.2"
 HELIX_ARCHIVE = "helixscreen-k2.zip"
 HELIX_URL = (
@@ -847,7 +847,8 @@ def main():
         with step("Downloading kernel.img"):
             download_sha256(KERNEL_URL, kernel_path, "kernel", KERNEL_SHA256)
         with step("Downloading swap utility"):
-            download_sha256(SWAP_URL, swap_path, "swap utility", SWAP_SHA256)
+            swap_sha256 = checksums.get("swap") or SWAP_SHA256
+            download_sha256(SWAP_URL, swap_path, "swap utility", swap_sha256)
         with step("Downloading HelixScreen"):
             download_sha256(HELIX_URL, helix_path, "HelixScreen", HELIX_SHA256)
 

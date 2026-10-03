@@ -146,7 +146,7 @@ class BoxChangeEngine:
     def select_tool(self, gcmd, tool):
         flush = bool(gcmd.get_int("FLUSH", 1))
         if self.mapping_filename is None:
-            return self.change(gcmd, tool, flush)
+            return self.change(gcmd, tool, flush, logical_tool=tool)
         if tool not in self.tool_map:
             reason = "T%d has no slot in this print's mapping" % tool
             if not self._is_print_file_command():
@@ -170,10 +170,12 @@ class BoxChangeEngine:
             slot, self.active_tool if slot == self.active_slot else None)
 
     def _commit_print_tool(self, request):
-        if self.mapping_filename is None:
-            return
-        self.active_tool = request.target_tool
-        self.active_slot = request.target if request.target_tool is not None else None
+        if request.target_tool is not None:
+            self.active_tool = request.target_tool
+            self.active_slot = request.target
+        elif self.mapping_filename is not None:
+            self.active_tool = request.target_tool
+            self.active_slot = request.target if request.target_tool is not None else None
 
     def _settle_print_tool(self, gcmd, slot, fault_generation):
         """Another file tool on the loaded slot needs only its own temperature."""
@@ -765,7 +767,7 @@ class BoxChangeEngine:
             self._check_abort(fault_generation)
             self.box.activate_tracking(target) if self.box.is_physical_slot(target) else None
             self._commit_loaded_slot(target)
-            if (self.mapping_filename is not None
+            if ((self.mapping_filename is not None or request.target_tool is not None)
                     and request.target_tool != request.source_tool and request.flush):
                 self._settle_print_tool(gcmd, target, fault_generation)
             return report_noop
@@ -1248,15 +1250,17 @@ class BoxChangeEngine:
         return previous != current
 
     def _metadata_tool(self, slot, source=False):
-        if self.mapping_filename is None:
-            return slot
         request = self.pending
         if request is not None:
-            if source and slot == request.source:
+            if source and slot == request.source and request.source_tool is not None:
                 return request.source_tool
-            if not source and slot == request.target:
+            if not source and slot == request.target and request.target_tool is not None:
                 return request.target_tool
-        return self.active_tool if slot == self.active_slot else None
+        if slot == self.active_slot and self.active_tool is not None:
+            return self.active_tool
+        if self.mapping_filename is None:
+            return slot
+        return None
 
     def _matrix_volume(self, source, target):
         if (not self._parsed_is_current() or self.matrix is None
