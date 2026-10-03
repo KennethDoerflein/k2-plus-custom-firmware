@@ -661,16 +661,23 @@ class Box:
         for tool in tools:
             if tool in self.registered_tools:
                 continue
-            self.gcode.register_command(
-                name,
-                lambda gcmd, slicer_tool=slot: self.change_engine.change(
-                    gcmd,
-                    # Consult routing table at runtime; default to 1:1
-                    self.tool_routing.get(slicer_tool, slicer_tool),
-                    bool(gcmd.get_int("FLUSH", 1)),
-                    logical_tool=slicer_tool),
-                desc="Change to box slot T%d" % slot,
+            name = "T%d" % tool
+            is_registered = (
+                self.gcode.is_command_registered(name)
+                if hasattr(self.gcode, "is_command_registered")
+                else name in getattr(self.gcode, "ready_gcode_handlers", {})
             )
+            if not is_registered:
+                self.gcode.register_command(
+                    name,
+                    lambda gcmd, slicer_tool=tool: self.change_engine.change(
+                        gcmd,
+                        # Consult routing table at runtime; default to 1:1
+                        self.tool_routing.get(slicer_tool, slicer_tool),
+                        bool(gcmd.get_int("FLUSH", 1)),
+                        logical_tool=slicer_tool),
+                    desc="Change to box slot T%d" % tool,
+                )
             self.registered_tools.add(tool)
 
     def _reset_tool_routing(self, *args):
@@ -725,6 +732,7 @@ class Box:
                         logical_tool=st),
                     desc="Change to box slot T%d (routed)" % slicer_tool,
                 )
+            self.registered_tools.add(slicer_tool)
 
         if not new_routing:
             raise gcmd.error(
