@@ -64,6 +64,19 @@ def class_members(tree, class_name):
                 members.add(node.attr)
         elif isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store):
             members.add(node.id)
+    for base in cls.bases:
+        base_name = getattr(base, "id", getattr(base, "attr", None))
+        if base_name:
+            for extra_file in EXTRAS.glob("*.py"):
+                sub_tree = parse(extra_file.name)
+                for sub in ast.walk(sub_tree):
+                    if isinstance(sub, ast.ClassDef) and sub.name == base_name:
+                        for node in ast.walk(sub):
+                            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                                members.add(node.name)
+                            elif isinstance(node, ast.Attribute) and chain(node.value) == "self":
+                                if isinstance(node.ctx, ast.Store):
+                                    members.add(node.attr)
     return members
 
 
@@ -107,12 +120,18 @@ class BoxInterfaces(unittest.TestCase):
 
     def test_tool_commands_go_through_select_tool(self):
         """T<n> must use select_tool or BOX_PRINT_START maps are ignored."""
-        source = (EXTRAS / "box.py").read_text()
-        tree = ast.parse(source)
-        for name in ("_register_tools", "cmd_set_routing"):
-            body = function_source(tree, source, name)
-            self.assertIn("select_tool", body, name)
-            self.assertNotIn("change_engine.change(", body, name)
+        source_box = (EXTRAS / "box.py").read_text()
+        tree_box = ast.parse(source_box)
+        body = function_source(tree_box, source_box, "_register_tools")
+        self.assertIn("select_tool", body)
+        self.assertNotIn("change_engine.change(", body)
+
+        routing_path = EXTRAS / "box_routing.py"
+        source_routing = (routing_path if routing_path.exists() else EXTRAS / "box.py").read_text()
+        tree_routing = ast.parse(source_routing)
+        body = function_source(tree_routing, source_routing, "cmd_set_routing")
+        self.assertIn("select_tool", body)
+        self.assertNotIn("change_engine.change(", body)
 
 
 class ReleaseFiles(unittest.TestCase):

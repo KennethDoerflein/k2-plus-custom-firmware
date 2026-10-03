@@ -5,8 +5,8 @@
       "size": 22040
     },
     "box.py": {
-      "sha256": "1f378af9d59d60a25c48576fb49b8404b5dc10ca9ec0c33f83511807395ba2b6",
-      "size": 152199
+      "sha256": "a438a17adab0bdf9aa4bcd239d5231fa5188b6a375e5977b34062eebba3d8f7b",
+      "size": 133718
     },
     "box_addr.py": {
       "sha256": "09c5597847f58e455d26e9faff459db9279223009820fcf0fa7e900f3c60c530",
@@ -20,6 +20,10 @@
       "sha256": "5b52867653ba55dfbd0c2bbd34e97d7d7696be74d64ccd05c01a28617e36d726",
       "size": 67298
     },
+    "box_dryer.py": {
+      "sha256": "243d62ff2e5a1e9adba7254cf104a59b308e0a2a681e58e6a55ac09563a87e9d",
+      "size": 16114
+    },
     "box_gcode.py": {
       "sha256": "63e93fc165ad83e34d7cd954a3876f06aad2c1b86802b0cf8b2d6dc74ff6b8e1",
       "size": 2225
@@ -27,6 +31,10 @@
     "box_protocol.py": {
       "sha256": "a7475669184b756ae128f3f3df47e9a9372361f2ee5cc0fa15d444090ca52a10",
       "size": 28018
+    },
+    "box_routing.py": {
+      "sha256": "f1d3c14cac54ac6a83e01a3ba425dd3235c029ff16a3c414e62d39ea807e7bf6",
+      "size": 4183
     },
     "cartographer.py": {
       "sha256": "ac787fe282f4dc2e64b3ebc4454332c4fd50ffdc0597d9e3935d6072e9572a2a",
