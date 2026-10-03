@@ -30,8 +30,8 @@ class BoxDryerMixin:
         self.printer.register_event_handler(
             "print_stats:complete_printing", self._on_print_complete_dry)
 
-    def _register_dryer_commands(self):
-        commands = (
+    def _dryer_commands(self):
+        return (
             ("BOX_SET_DRY_MODE", self.cmd_set_dry_mode,
              "Configure and start CFS dryer heating"),
             ("_BOX_SET_DRY_MODE", self.cmd_set_dry_mode,
@@ -55,10 +55,6 @@ class BoxDryerMixin:
             ("_BOX_SET_AUTO_HUMIDITY_MODE", self.cmd_set_auto_humidity,
              "Set automatic humidity maintenance"),
         )
-        for name, handler, desc in commands:
-            if hasattr(self, "_guard_widget_command") and name in getattr(self, "SAFE_WIDGET_COMMANDS", ()):
-                handler = self._guard_widget_command(name, handler)
-            self.gcode.register_command(name, handler, desc=desc)
 
     def _dryer_status(self, snap):
         boxes = {}

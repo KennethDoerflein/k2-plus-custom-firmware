@@ -134,6 +134,46 @@ class BoxInterfaces(unittest.TestCase):
         self.assertNotIn("change_engine.change(", body)
 
 
+class CommandRegistration(unittest.TestCase):
+    """Runs the real registration code, which static checks cannot cover."""
+
+    def setUp(self):
+        sys.path.insert(0, str(ROOT))
+        self.addCleanup(sys.path.remove, str(ROOT))
+        import extras.box as box_module
+        self.box_module = box_module
+
+        class FakeGcode:
+            def __init__(self):
+                self.handlers = {}
+
+            def register_command(self, name, handler, desc=None):
+                self.handlers[name] = handler
+
+        engine = type("Engine", (), {
+            "parse_flush_volumes": lambda *a: None,
+            "capture_pause": lambda *a: None,
+            "prepare_resume": lambda *a: None,
+            "complete_pause_resume": lambda *a: None})()
+        box = object.__new__(box_module.Box)
+        box.gcode = FakeGcode()
+        box.change_engine = engine
+        box._register_commands()
+        self.handlers = box.gcode.handlers
+
+    def test_mixin_commands_are_registered(self):
+        for name in ("BOX_SET_ROUTING", "BOX_CLEAR_ROUTING",
+                     "BOX_SET_DRY_MODE", "BOX_GET_DRY_MODE", "BOX_PAUSE_DRY",
+                     "CONTINUE_PAUSE_DRY", "BOX_SET_AUTO_DRY_MODE",
+                     "BOX_SET_AUTO_HUMIDITY_MODE"):
+            self.assertIn(name, self.handlers)
+
+    def test_widget_commands_are_guarded(self):
+        for name in self.box_module.SAFE_WIDGET_COMMANDS:
+            self.assertIn(name, self.handlers, name)
+            self.assertEqual(self.handlers[name].__name__, "guarded", name)
+
+
 class ReleaseFiles(unittest.TestCase):
     def test_every_module_compiles(self):
         for path in sorted(EXTRAS.glob("*.py")):

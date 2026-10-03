@@ -20,15 +20,13 @@ class BoxRoutingMixin:
             self.printer.register_event_handler(
                 event, self._reset_tool_routing)
 
-    def _register_routing_commands(self):
-        commands = (
+    def _routing_commands(self):
+        return (
             ("BOX_SET_ROUTING", self.cmd_set_routing,
              "Set slicer-tool-to-physical-slot routing (e.g. BOX_SET_ROUTING T0=2 T1=0)"),
             ("BOX_CLEAR_ROUTING", self.cmd_clear_routing,
              "Reset tool routing to 1:1 default"),
         )
-        for name, handler, desc in commands:
-            self.gcode.register_command(name, handler, desc=desc)
 
     def _routing_status(self):
         return {

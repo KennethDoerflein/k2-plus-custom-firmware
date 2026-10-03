@@ -568,12 +568,11 @@ class Box(BoxRoutingMixin, BoxDryerMixin):
             ("_BOX_RFID_MAP_DELETE", self.cmd_rfid_map_delete,
              "Delete an RFID mapping"),
         )
+        commands += self._routing_commands() + self._dryer_commands()
         for name, handler, description in commands:
             if name in SAFE_WIDGET_COMMANDS:
                 handler = self._guard_widget_command(name, handler)
             self.gcode.register_command(name, handler, desc=description)
-        self._register_routing_commands()
-        self._register_dryer_commands()
 
     def _guard_widget_command(self, name, handler):
         def guarded(gcmd):
