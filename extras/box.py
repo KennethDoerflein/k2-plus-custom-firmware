@@ -667,7 +667,8 @@ class Box:
                     gcmd,
                     # Consult routing table at runtime; default to 1:1
                     self.tool_routing.get(slicer_tool, slicer_tool),
-                    bool(gcmd.get_int("FLUSH", 1))),
+                    bool(gcmd.get_int("FLUSH", 1)),
+                    logical_tool=slicer_tool),
                 desc="Change to box slot T%d" % slot,
             )
             self.registered_tools.add(tool)
@@ -720,7 +721,8 @@ class Box:
                     lambda gcmd, st=slicer_tool: self.change_engine.change(
                         gcmd,
                         self.tool_routing.get(st, st),
-                        bool(gcmd.get_int("FLUSH", 1))),
+                        bool(gcmd.get_int("FLUSH", 1)),
+                        logical_tool=st),
                     desc="Change to box slot T%d (routed)" % slicer_tool,
                 )
 
