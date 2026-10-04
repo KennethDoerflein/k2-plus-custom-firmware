@@ -615,6 +615,7 @@ class Box(BoxRoutingMixin, BoxDryerMixin):
         self._initialize_rfid()
         self._register_t_commands()
         self.printer.send_event("box:ready")
+        self._sync_lane_data_async()
         if self.klippy_ready:
             self.reactor.update_timer(
                 self.poll_timer, self.reactor.monotonic() + POLL_START_DELAY)
@@ -708,6 +709,8 @@ class Box(BoxRoutingMixin, BoxDryerMixin):
         self.runout_feature = None
 
     def _disconnect(self, *args):
+        self.enumeration_started = False
+        self.drivers_ready = False
         self.change_engine.reset_print_mapping()
         self._invalidate_tracking_session()
         self.spoolman_generation += 1
@@ -867,41 +870,45 @@ class Box(BoxRoutingMixin, BoxDryerMixin):
 
     def _sync_lane_data_async(self):
         def worker():
-            try:
-                import urllib.request
-                import json
-                snap = self.snapshot
-                physical = self._slot_statuses(snap)
-                slots = physical + [self._external_status(snap)]
+            import time
+            import urllib.request
+            import json
 
-                for slot in slots:
-                    if not slot['present'] or not slot['material']:
-                        value = {}
-                    else:
-                        color = slot['color'] or ""
-                        if color.startswith("#"):
-                            color = color[1:]
-                        value = {
-                            "lane": str(slot['index']),
-                            "color": color,
-                            "material": slot['material'] or "",
-                            "nozzle_temp": 220,
-                            "bed_temp": 60
-                        }
+            for _attempt in range(5):
+                try:
+                    snap = self.snapshot
+                    physical = self._slot_statuses(snap)
+                    slots = physical + [self._external_status(snap)]
 
-                    body = json.dumps({
-                        "namespace": "lane_data",
-                        "key": f"lane{slot['index']}",
-                        "value": value
-                    }).encode()
+                    for slot in slots:
+                        if not slot['present'] or not slot['material']:
+                            value = {}
+                        else:
+                            color = slot['color'] or ""
+                            if color.startswith("#"):
+                                color = color[1:]
+                            value = {
+                                "lane": str(slot['index']),
+                                "color": color,
+                                "material": slot['material'] or "",
+                                "nozzle_temp": 220,
+                                "bed_temp": 60
+                            }
 
-                    req = urllib.request.Request(
-                        "http://127.0.0.1:7125/server/database/item", data=body,
-                        headers={"Content-Type": "application/json"}, method="POST")
-                    with urllib.request.urlopen(req, timeout=2.0) as response:
-                        pass
-            except Exception:
-                pass
+                        body = json.dumps({
+                            "namespace": "lane_data",
+                            "key": f"lane{slot['index']}",
+                            "value": value
+                        }).encode()
+
+                        req = urllib.request.Request(
+                            "http://127.0.0.1:7125/server/database/item", data=body,
+                            headers={"Content-Type": "application/json"}, method="POST")
+                        with urllib.request.urlopen(req, timeout=2.0) as response:
+                            pass
+                    break
+                except Exception:
+                    time.sleep(1.0)
 
         import threading
         threading.Thread(target=worker).start()

@@ -134,10 +134,16 @@ class AutoAddressManager:
                 errors, "assign box %s to address %d" % (uniid.hex(), target),
                 client.assign, uniid, target)
             if assigned is None:
-                errors.append(
-                    "assign address %d returned no valid response" % target)
-                errors.append(ADDRESS_WEDGE_WARNING)
-                break
+                fallback_verified = self._call(
+                    [], "fallback query address %d" % target, client.query, target)
+                if (fallback_verified is not None
+                        and fallback_verified.uniid == uniid):
+                    assigned = fallback_verified
+                else:
+                    errors.append(
+                        "assign address %d returned no valid response" % target)
+                    errors.append(ADDRESS_WEDGE_WARNING)
+                    break
 
             verified = self._call(
                 errors, "verify address %d" % target, client.query, target)
