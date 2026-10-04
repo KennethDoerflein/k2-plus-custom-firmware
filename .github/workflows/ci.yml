@@ -25,11 +25,11 @@ jobs:
       - name: Auto-update Release Checksums & Manifest
         run: |
           python scripts/release_index.py
-          if [[ -n $(git status --porcelain extras/manifest.json index) ]]; then
+          if [[ -n $(git status --porcelain extras/manifest.json index install.py) ]]; then
             if [[ "${{ github.event_name }}" == "push" ]]; then
               git config user.name "github-actions[bot]"
               git config user.email "github-actions[bot]@users.noreply.github.com"
-              git add extras/manifest.json index
+              git add extras/manifest.json index install.py
               git commit -m "Auto-update release checksums and manifest [skip ci]"
               git push
             fi

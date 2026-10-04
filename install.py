@@ -845,7 +845,8 @@ def main():
         with step("Downloading root file system"):
             download_sha256(ROOTFS_URL, rootfs_path, "root file system", rootfs_sha256)
         with step("Downloading kernel.img"):
-            download_sha256(KERNEL_URL, kernel_path, "kernel", KERNEL_SHA256)
+            kernel_sha256 = checksums.get("kernel.img") or KERNEL_SHA256
+            download_sha256(KERNEL_URL, kernel_path, "kernel", kernel_sha256)
         with step("Downloading swap utility"):
             swap_sha256 = checksums.get("swap") or SWAP_SHA256
             download_sha256(SWAP_URL, swap_path, "swap utility", swap_sha256)
