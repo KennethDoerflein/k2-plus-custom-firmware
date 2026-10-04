@@ -22,6 +22,7 @@ jobs:
       
       - name: Repackage rootfs.ext2 and Generate Checksums
         run: |
+          python scripts/release_index.py
           chmod +x scripts/repack_rootfs.sh
           sudo ./scripts/repack_rootfs.sh
           sha256sum rootfs.ext2 kernel.img swap > checksums.txt
