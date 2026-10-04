@@ -460,6 +460,7 @@ class Box(BoxRoutingMixin, BoxDryerMixin):
         self.address_errors = ()
         self.drivers_ready = False
         self.snapshot = BoxSnapshot(loaded_slot=None)
+        self.lane_data_synced = False
         self._sync_lane_data_async()
         self.operation_depth = 0
         self.tracking_epoch = 0
@@ -567,6 +568,10 @@ class Box(BoxRoutingMixin, BoxDryerMixin):
             ("_BOX_RFID_MAP_SET", self.cmd_rfid_map_set, "Save an RFID mapping"),
             ("_BOX_RFID_MAP_DELETE", self.cmd_rfid_map_delete,
              "Delete an RFID mapping"),
+            ("BOX_ENUMERATE", self.cmd_enumerate,
+             "Re-scan RS485 bus and enumerate CFS boxes"),
+            ("BOX_SYNC_LANES", self.cmd_sync_lanes,
+             "Synchronize filament lanes with Moonraker"),
         )
         commands += self._routing_commands() + self._dryer_commands()
         for name, handler, description in commands:
@@ -588,6 +593,15 @@ class Box(BoxRoutingMixin, BoxDryerMixin):
     def cmd_runout(self, gcmd):
         self.cancel_runout_defer()
         return self.change_engine.runout(gcmd)
+
+    def cmd_enumerate(self, gcmd):
+        self.enumeration_started = False
+        self._serial_ready()
+        gcmd.respond_info("[BOX]: Triggered CFS re-enumeration on RS-485 bus")
+
+    def cmd_sync_lanes(self, gcmd):
+        self._sync_lane_data_async()
+        gcmd.respond_info("[BOX]: Triggered filament lane sync with Moonraker")
 
     def _serial_ready(self, *args):
         if self.enumeration_started:
@@ -615,6 +629,9 @@ class Box(BoxRoutingMixin, BoxDryerMixin):
         self._initialize_rfid()
         self._register_t_commands()
         self.printer.send_event("box:ready")
+        self._sync_lane_data_async()
+        if not self.drivers:
+            self.enumeration_started = False
         if self.klippy_ready:
             self.reactor.update_timer(
                 self.poll_timer, self.reactor.monotonic() + POLL_START_DELAY)
@@ -708,6 +725,9 @@ class Box(BoxRoutingMixin, BoxDryerMixin):
         self.runout_feature = None
 
     def _disconnect(self, *args):
+        self.enumeration_started = False
+        self.drivers_ready = False
+        self.lane_data_synced = False
         self.change_engine.reset_print_mapping()
         self._invalidate_tracking_session()
         self.spoolman_generation += 1
@@ -867,44 +887,51 @@ class Box(BoxRoutingMixin, BoxDryerMixin):
 
     def _sync_lane_data_async(self):
         def worker():
-            try:
-                import urllib.request
-                import json
-                snap = self.snapshot
-                physical = self._slot_statuses(snap)
-                slots = physical + [self._external_status(snap)]
+            import time
+            import urllib.request
+            import json
 
-                for slot in slots:
-                    if not slot['present'] or not slot['material']:
-                        value = {}
-                    else:
-                        color = slot['color'] or ""
-                        if color.startswith("#"):
-                            color = color[1:]
-                        value = {
-                            "lane": str(slot['index']),
-                            "color": color,
-                            "material": slot['material'] or "",
-                            "nozzle_temp": 220,
-                            "bed_temp": 60
-                        }
+            for attempt in range(10):
+                try:
+                    snap = self.snapshot
+                    physical = self._slot_statuses(snap)
+                    slots = physical + [self._external_status(snap)]
 
-                    body = json.dumps({
-                        "namespace": "lane_data",
-                        "key": f"lane{slot['index']}",
-                        "value": value
-                    }).encode()
+                    for slot in slots:
+                        if not slot['present'] or not slot['material']:
+                            value = {}
+                        else:
+                            color = slot['color'] or ""
+                            if color.startswith("#"):
+                                color = color[1:]
+                            target_temp = self.store.materials.get(
+                                slot['material'], {}).get('target_temp', 220)
+                            value = {
+                                "lane": str(slot['index']),
+                                "color": color,
+                                "material": slot['material'] or "",
+                                "nozzle_temp": target_temp,
+                                "bed_temp": 60
+                            }
 
-                    req = urllib.request.Request(
-                        "http://127.0.0.1:7125/server/database/item", data=body,
-                        headers={"Content-Type": "application/json"}, method="POST")
-                    with urllib.request.urlopen(req, timeout=2.0) as response:
-                        pass
-            except Exception:
-                pass
+                        body = json.dumps({
+                            "namespace": "lane_data",
+                            "key": f"lane{slot['index']}",
+                            "value": value
+                        }).encode()
+
+                        req = urllib.request.Request(
+                            "http://127.0.0.1:7125/server/database/item", data=body,
+                            headers={"Content-Type": "application/json"}, method="POST")
+                        with urllib.request.urlopen(req, timeout=2.0) as response:
+                            pass
+                    self.lane_data_synced = True
+                    break
+                except Exception:
+                    time.sleep(1.5)
 
         import threading
-        threading.Thread(target=worker).start()
+        threading.Thread(target=worker, daemon=True).start()
 
     def hotend_filament(self):
         value = self.store.setting("hotend_filament")
@@ -2572,7 +2599,7 @@ class Box(BoxRoutingMixin, BoxDryerMixin):
         )
         prev_mask = self.snapshot.slot_mask if self.snapshot is not None else None
         self.snapshot = snap
-        if prev_mask is not None and prev_mask != snap.slot_mask:
+        if not self.lane_data_synced or (prev_mask is not None and prev_mask != snap.slot_mask):
             self._sync_lane_data_async()
         return snap
 

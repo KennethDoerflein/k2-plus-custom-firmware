@@ -93,6 +93,9 @@ class AutoAddressManager:
         seen_discoveries = set()
         while len(online) < self.target_count:
             reply = self._call(errors, "discover", client.discover)
+            if reply is None and not online and pause is not None:
+                pause(0.2)
+                reply = self._call([], "discover retry", client.discover)
             if reply is None:
                 _klog('A1 discovery response=none', level=logging.info)
                 break
@@ -134,10 +137,17 @@ class AutoAddressManager:
                 errors, "assign box %s to address %d" % (uniid.hex(), target),
                 client.assign, uniid, target)
             if assigned is None:
-                errors.append(
-                    "assign address %d returned no valid response" % target)
-                errors.append(ADDRESS_WEDGE_WARNING)
-                break
+                if pause is not None:
+                    pause(0.1)
+                fallback = self._call(
+                    [], "fallback verify address %d" % target, client.query, target)
+                if fallback is not None and fallback.uniid == uniid:
+                    assigned = fallback
+                else:
+                    errors.append(
+                        "assign address %d returned no valid response" % target)
+                    errors.append(ADDRESS_WEDGE_WARNING)
+                    break
 
             verified = self._call(
                 errors, "verify address %d" % target, client.query, target)
