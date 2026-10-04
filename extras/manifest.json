@@ -5,12 +5,12 @@
       "size": 22040
     },
     "box.py": {
-      "sha256": "8960a9b89aff0ca305c0bfd485e1d314ec1a327df5a8924a94189081838f07d5",
-      "size": 133706
+      "sha256": "a84e67d3bfb99b6887817f53aed9facc02ccbd14e5ce3fcb0df4c663f584dc84",
+      "size": 134987
     },
     "box_addr.py": {
-      "sha256": "09c5597847f58e455d26e9faff459db9279223009820fcf0fa7e900f3c60c530",
-      "size": 7866
+      "sha256": "99a394fb397b413fa17624b25ccffdb4d240260ad74a59f357adbeb18b482200",
+      "size": 8374
     },
     "box_catalog.py": {
       "sha256": "0933c92ddee2068acf8364d7b00f29831fb898b1ab53489180d7d6a551a62faa",
