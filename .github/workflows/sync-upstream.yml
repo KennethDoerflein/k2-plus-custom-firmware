@@ -69,6 +69,7 @@ jobs:
         uses: peter-evans/create-pull-request@v6
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          base: main
           branch: automated-upstream-sync
           title: "chore(upstream): automated sync with upstream Jacob10383/k2-plus-custom-firmware"
           commit-message: "chore(upstream): sync changes from Jacob10383/k2-plus-custom-firmware"
