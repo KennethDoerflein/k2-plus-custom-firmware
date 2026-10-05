@@ -22,6 +22,8 @@ Klipper and Cartographer commands remain in their own documentation.
 | `NOZZLE_CLEAN` | Runs the configured nozzle-cleaning sequence. |
 | `BOX_LOAD [SLOT=0]` | Loads a physical zero-based CFS slot without the full tool-change policy. |
 | `BOX_UNLOAD [MANUAL=0\|1]` | Fully unloads the active filament. |
+| `SET_CANCEL_UNLOAD [ENABLE=0\|1]` | Enables or disables automatic CFS unload on print cancel. |
+| `CANCEL_PRINT [UNLOAD=0\|1]` | Cancels current print and parks toolhead, unloading CFS filament if enabled (default `1`). |
 | `BOX_CUT [FORCE=0\|1]` | Runs the cutter directly. |
 | `BOX_BUFFER_RETRACT` | Runs the CFS buffer retract phase. |
 | `BOX_DEBUG [RAW=0\|1]` | Prints complete Box, topology, slot, sensor, and RFID diagnostics. |
