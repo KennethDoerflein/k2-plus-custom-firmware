@@ -8,23 +8,28 @@ SSH into the printer and run:
 python3 -c "import urllib.request; exec(urllib.request.urlopen('https://raw.githubusercontent.com/KennethDoerflein/k2-plus-custom-firmware/main/install.py').read(), {'__name__':'__main__'})"
 ```
 
-Power cycle the printer when instructed. If SSH drops during the final archive
-step before the completion message appears, the install is complete; power
-cycle the printer.
+Power cycle the printer when instructed.
+
+If custom firmware was installed before, the installer asks whether to keep
+your setup or start over. See [Updates & Recovery](updates-recovery.md#update-creality-firmware).
 
 ## First boot
 
 After the printer starts again, connect it to the network:
 
 - Ethernet: nothing else is required.
-- Wi-Fi: use the printer screen only far enough to join the network.
+- Wi-Fi: if Creality firmware was connected to Wi-Fi, the printer joins the
+  same network. Otherwise, use the printer screen only far enough to join the
+  network.
 
-Then SSH into the printer and run:
+Then SSH into the printer as `root` (password `creality_2024`) and run:
 
 ```sh
 /mnt/UDISK/bootstrap
 ```
 *(Note: On initial flash, `/usr/bin/bootstrap` contains the prebuilt script from the rootfs image. Running `/mnt/UDISK/bootstrap` executes your seeded version and automatically updates `/usr/bin/bootstrap`, so for all future runs you can simply type `bootstrap`.)*
+
+Change the password with `passwd` if you so choose.
 
 When bootstrap finishes, Fluidd is available on port `4408` and Mainsail on
 port `4409` at the printer's IP address.

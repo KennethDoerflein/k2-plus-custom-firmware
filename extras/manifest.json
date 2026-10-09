@@ -6,7 +6,7 @@
     },
     "box.py": {
       "sha256": "a84e67d3bfb99b6887817f53aed9facc02ccbd14e5ce3fcb0df4c663f584dc84",
-      "size": 134987
+      "size": 140229
     },
     "box_addr.py": {
       "sha256": "99a394fb397b413fa17624b25ccffdb4d240260ad74a59f357adbeb18b482200",
@@ -74,7 +74,7 @@
     },
     "motor_control.py": {
       "sha256": "0eb7a348f3f643fe1bb3ffe3af14b3810a980fb2b1296f2d50d227e5e0edc7d6",
-      "size": 184464
+      "size": 189906
     },
     "motor_map.json": {
       "sha256": "d4f143b0ff2522165992bef5053a07f295fa7bc8cb0fef4a937179706388fee1",
@@ -86,7 +86,7 @@
     },
     "prtouch.py": {
       "sha256": "886d0c0e8ec0abf41990368bc5ecbfeae5317218ab67b87a6894e0fa15095688",
-      "size": 47164
+      "size": 48542
     },
     "ptc_power_limiter.py": {
       "sha256": "0fb1cf65edb1af2d85d4cddf7c08fe3a18562051bc438ba7afcd7018b57555ff",

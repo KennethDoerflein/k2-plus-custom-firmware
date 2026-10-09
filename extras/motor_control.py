@@ -74,6 +74,7 @@ class MotorControlConfigModel:
     raw_options: dict[str, str | None]
     cut_pos_offset: float
     pins: dict[str, MotorPinConfig]
+    mcu_temperature_sensors: tuple[str, ...] = ALL_AXES
 
     @classmethod
     def from_config(cls, config, param_options=()):
@@ -95,10 +96,19 @@ class MotorControlConfigModel:
             )
             for option, (pin_desc, startup_value) in K2_PIN_LAYOUT.items()
         }
+        sensor_option = config.get(
+            "mcu_temperature_sensors", ", ".join(ALL_AXES)).strip().lower()
+        sensor_axes = () if sensor_option in ("", "none") else tuple(
+            axis.strip() for axis in sensor_option.split(","))
+        if any(axis not in ALL_AXES for axis in sensor_axes):
+            raise config.error(
+                "mcu_temperature_sensors must be a comma-separated list of "
+                "x, y, z, z1, e, or none")
         return cls(
             raw_options=raw,
             cut_pos_offset=config.getfloat("cut_pos_offset", 0.4),
             pins=pins,
+            mcu_temperature_sensors=tuple(dict.fromkeys(sensor_axes)),
         )
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -2483,33 +2493,38 @@ class Mot2AxisTempSensor:
 
 
 class Mot2TempSensorHub:
-    def __init__(self, replacement):
+    def __init__(self, replacement, axes=ALL_AXES):
         self.replacement = replacement
         self.reactor = replacement.reactor
+        self.axes = tuple(axes)
         self.sensors = {}
-        for axis in ALL_AXES:
+        for axis in self.axes:
             sensor = Mot2AxisTempSensor()
             name = "temperature_sensor motor_%s_MCU" % (axis.upper(),)
             replacement.printer.add_object(name, sensor)
             self.sensors[axis] = sensor
-        self._timer = self.reactor.register_timer(self._poll)
+        self._timer = (
+            self.reactor.register_timer(self._poll) if self.axes else None)
         self._started = False
         self._axis_index = 0
 
     def start(self):
+        if not self.axes:
+            return
         self._started = True
         self.reactor.update_timer(self._timer, self.reactor.monotonic())
 
     def stop(self):
         self._started = False
-        self.reactor.update_timer(self._timer, self.reactor.NEVER)
+        if self._timer is not None:
+            self.reactor.update_timer(self._timer, self.reactor.NEVER)
 
     def _poll(self, _eventtime):
         if not self._started:
             return self.reactor.NEVER
         if self.replacement.is_ready and self.replacement.motor_params_init:
-            axis = ALL_AXES[self._axis_index]
-            self._axis_index = (self._axis_index + 1) % len(ALL_AXES)
+            axis = self.axes[self._axis_index]
+            self._axis_index = (self._axis_index + 1) % len(self.axes)
             try:
                 target = self.replacement.axes.target(axis)
                 self.sensors[axis].note(target.client.get_value(
@@ -2653,7 +2668,8 @@ class MotorControl(MotorControlDebugSurfaceMixin):
         self._startup_auto_retry_count = 0
         self._startup_allow_auto_retry = True
         self._startup_timer = self.reactor.register_timer(self._startup_handler)
-        self.temp_sensors = Mot2TempSensorHub(self)
+        self.temp_sensors = Mot2TempSensorHub(
+            self, self.config_model.mcu_temperature_sensors)
 
         for axis, pin_cfg in self.stall_monitor.pin_map.items():
             if pin_cfg is not None:

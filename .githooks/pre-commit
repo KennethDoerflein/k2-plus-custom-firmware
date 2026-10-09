@@ -1,0 +1,6 @@
+#!/bin/sh
+# Automatically update release manifest and index on commit
+if [ -f scripts/release_index.py ]; then
+    python scripts/release_index.py
+    git add extras/manifest.json index install.py
+fi
