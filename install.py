@@ -24,13 +24,13 @@ FIRMWARE_VERSION = "6.18"
 ROOTFS_SHA256 = "40960edb58ea8fbca9a38b78df1951553eeb043aa99fc3183b9133dfe12df3da"
 KERNEL_SHA256 = "a978c0b4894e8689b481efff7b1778a844823191e8d898b5bef454ec385fc193"
 SWAP_SHA256 = "dceaafaa3a1f7e8243d94a759b14bda52eade79c9a8f486fb85982eaac391e8e"
-HELIX_VERSION = "v1.0.3"
+HELIX_VERSION = "v1.0.4"
 HELIX_ARCHIVE = f"helixscreen-k2-{HELIX_VERSION}.tar.gz"
 HELIX_URL = (
     "https://github.com/prestonbrown/helixscreen/releases/download/"
     f"{HELIX_VERSION}/{HELIX_ARCHIVE}"
 )
-HELIX_SHA256 = "38d3e297440dce5bcc52c3e2249424c0725e0d4e462c8b8ac5888dad1d3dc4f4"
+HELIX_SHA256 = "ca31738a821a112303469d5ce87043ab54154b9e966ee0f11610a4a43a3b1071"
 
 # Download from GitHub Releases (supports files >100MB)
 ROOTFS_URL = f"{BASE_URL}/v{FIRMWARE_VERSION}/rootfs.ext2"
