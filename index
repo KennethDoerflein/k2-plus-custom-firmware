@@ -1,10 +1,10 @@
 {
   "bootstrap": {
-    "sha256": "202cdd7a4b6c4978367fa2d97b08beb94e91aabce8e4d7e742b9dc38a65c4003",
-    "size": 42634
+    "sha256": "f26a6b8705cfdeb2a49dec400cd2a1db492fca2c3e7c0335ad18ee034c4f6004",
+    "size": 45612
   },
   "extras": {
-    "manifest_sha256": "50bb6a0965d566cee4714ee9c44f8e3da6f7d779139db8f74b2ce498303009c7",
+    "manifest_sha256": "73fecee6a25bd3820272ef63249da288b7855841e1ce986944afedf79e7dbd29",
     "manifest_size": 3634
   },
   "format": "k2-release-index-v1",
@@ -17,8 +17,8 @@
     "size": 314572800
   },
   "swap": {
-    "sha256": "dceaafaa3a1f7e8243d94a759b14bda52eade79c9a8f486fb85982eaac391e8e",
-    "size": 32732
+    "sha256": "b53eea3151ac7c68d3de962191534d182d8b7c2de64abcd4260ddc69ffebab45",
+    "size": 32738
   },
   "version": "6.18"
 }
