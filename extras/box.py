@@ -490,6 +490,7 @@ class Box(BoxRoutingMixin, BoxDryerMixin):
         self.drivers = {}
         self.address_errors = ()
         self.drivers_ready = False
+        self.startup_unload_scheduled = False
         self.snapshot = BoxSnapshot(loaded_slot=None)
         self.lane_data_synced = False
         self._sync_lane_data_async()
@@ -592,6 +593,8 @@ class Box(BoxRoutingMixin, BoxDryerMixin):
              "Set automatic runout swapping"),
             ("_BOX_SET_UNLOAD_AFTER_PRINT", self.cmd_unload_after_print,
              "Set automatic unload after printing"),
+            ("_BOX_SET_UNLOAD_AT_STARTUP", self.cmd_unload_at_startup,
+             "Set automatic unload at startup"),
             ("_BOX_SET_RFID_INSERT_READING", self.cmd_rfid_insert,
              "Set RFID insertion reads"),
             ("_BOX_SET_RFID_STARTUP_READING", self.cmd_rfid_startup,
@@ -661,6 +664,7 @@ class Box(BoxRoutingMixin, BoxDryerMixin):
         self._register_t_commands()
         self.printer.send_event("box:ready")
         self._sync_lane_data_async()
+        self._schedule_startup_unload()
         if not self.drivers:
             self.enumeration_started = False
         if self.klippy_ready:
@@ -695,6 +699,53 @@ class Box(BoxRoutingMixin, BoxDryerMixin):
         if self.drivers_ready:
             self.reactor.update_timer(
                 self.poll_timer, self.reactor.monotonic() + POLL_START_DELAY)
+        self._schedule_startup_unload()
+
+    def _schedule_startup_unload(self):
+        if (self.startup_unload_scheduled
+                or not self.unload_at_startup_enabled
+                or not self.klippy_ready or not self.drivers_ready):
+            return
+        self.startup_unload_scheduled = True
+        self.reactor.register_callback(self._startup_unload)
+
+    def _startup_unload(self, eventtime):
+        if (not self.unload_at_startup_enabled
+                or not self.klippy_ready or not self.drivers_ready):
+            return
+        if (self.operation_depth or self.runout_active
+                or self.change_engine._is_print_active()
+                or self.change_engine._is_print_paused()):
+            self._warn("Startup unload skipped: printer is busy")
+            return
+        try:
+            recovery = self.printer.lookup_object(
+                "power_loss_recovery", None)
+            if recovery is not None:
+                recovery_store = getattr(recovery, "store", None)
+                if recovery_store is None:
+                    self._warn(
+                        "Startup unload skipped: unable to check power-loss recovery")
+                    return
+                if recovery_store.recovery_point() is not None:
+                    self._warn(
+                        "Startup unload skipped: power-loss recovery is available")
+                    return
+            live = self.read_live_state()
+        except Exception as exc:
+            self._warn("Startup unload skipped: unable to read printer state: %s" % exc)
+            return
+        if not live.data_ready:
+            self._warn("Startup unload skipped: filament state is not ready")
+            return
+        if not self.is_valid_slot(live.loaded_slot):
+            return
+        self._info(self.gcode, "Startup unload: %s is loaded" %
+                   self.slot_label(live.loaded_slot))
+        try:
+            self.gcode.run_script_from_command("BOX_UNLOAD")
+        except Exception as exc:
+            self._warn("Startup unload failed: %s" % exc)
 
     def _install_runout_source_observer(self, eventtime):
         helper = getattr(self._filament_sensor(), "runout_helper", None)
@@ -792,6 +843,7 @@ class Box(BoxRoutingMixin, BoxDryerMixin):
             "runout": self._runout_status(physical, snap),
             "runout_swap_enabled": self.runout_swap_enabled,
             "unload_after_print_enabled": self.unload_after_print_enabled,
+            "unload_at_startup_enabled": self.unload_at_startup_enabled,
             "rfid_insert_reading_enabled": self.rfid_insert_reading_enabled,
             "rfid_startup_reading_enabled": self.rfid_startup_reading_enabled,
             "dryer": self._dryer_status(snap),
@@ -1006,6 +1058,10 @@ class Box(BoxRoutingMixin, BoxDryerMixin):
     @property
     def unload_after_print_enabled(self):
         return bool(self.store.setting("unload_after_print_enabled", False))
+
+    @property
+    def unload_at_startup_enabled(self):
+        return bool(self.store.setting("unload_at_startup_enabled", False))
 
     @property
     def rfid_insert_reading_enabled(self):
@@ -1380,6 +1436,12 @@ class Box(BoxRoutingMixin, BoxDryerMixin):
         self._info(gcmd, "Unload after print %s" % (
             "enabled" if enabled else "disabled"))
 
+    def cmd_unload_at_startup(self, gcmd):
+        enabled = bool(gcmd.get_int("ENABLE", 0, minval=0, maxval=1))
+        self.store.set_setting("unload_at_startup_enabled", enabled)
+        self._info(gcmd, "Unload at startup %s" % (
+            "enabled" if enabled else "disabled"))
+
     def cmd_rfid_insert(self, gcmd):
         enabled = bool(gcmd.get_int("ENABLE", 0, minval=0, maxval=1))
         self.store.set_setting("rfid_insert_reading_enabled", enabled)
@@ -1492,9 +1554,11 @@ class Box(BoxRoutingMixin, BoxDryerMixin):
                             continue
                         record = cached.records.get(
                             name, "").strip("\x00")
-                        if (record.lower() != "busy"
-                                and (len(record) != 40
-                                     or not cached.fields.get(name))):
+                        sample = (record, cached.fields.get(name))
+                        if self._rfid_record_ready(sample):
+                            self.rfid_live_slots.add(
+                                self._global_slot(address, local))
+                        elif record.lower() != "busy":
                             unread |= bit
                     if unread:
                         self._force_rfid_results(
@@ -1504,6 +1568,7 @@ class Box(BoxRoutingMixin, BoxDryerMixin):
                     address, exc))
         self.snapshot = replace(
             self.snapshot, slot_mask=self._presence_mask())
+        self._refresh_rfid_remaining()
 
     def _presence_mask(self):
         mask = 0

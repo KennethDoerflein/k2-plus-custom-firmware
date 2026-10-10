@@ -14,6 +14,7 @@ import subprocess
 import sys
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 
 ROOT = Path(__file__).resolve().parent.parent
 EXTRAS = ROOT / "extras"
@@ -134,6 +135,118 @@ class BoxInterfaces(unittest.TestCase):
         self.assertNotIn("change_engine.change(", body)
 
 
+class RfidStartup(unittest.TestCase):
+    def test_cached_present_tags_populate_remaining_without_forced_read(self):
+        sys.path.insert(0, str(ROOT))
+        self.addCleanup(sys.path.remove, str(ROOT))
+        import extras.box as box_module
+
+        class FakeDriver:
+            def __init__(self):
+                self.forced_reads = []
+
+            def set_rfid_insert_reading(self, enabled, timeout):
+                return SimpleNamespace(status=box_protocol.STATUS_OK)
+
+            def query_slot_mask(self, timeout):
+                return SimpleNamespace(
+                    status=box_protocol.STATUS_OK, value=0b0011)
+
+            def query_rfid_records(self, mask, timeout):
+                return SimpleNamespace(
+                    status=box_protocol.STATUS_OK,
+                    records={"A": "A" * 40, "B": "B" * 40},
+                    fields={"A": {"mat_id": "A"}, "B": {"mat_id": "B"}})
+
+            def query_rfid_remaining(self, mask, timeout):
+                return SimpleNamespace(
+                    status=box_protocol.STATUS_OK,
+                    values={"A": 2, "B": 96, "C": 0, "D": 0})
+
+            def force_rfid_read(self, mask):
+                self.forced_reads.append(mask)
+
+        box = object.__new__(box_module.Box)
+        driver = FakeDriver()
+        box.drivers = {1: driver}
+        box.store = SimpleNamespace(
+            setting=lambda name, default=False: (
+                True if name == "rfid_startup_reading_enabled" else default))
+        box.rfid_presence = {}
+        box.rfid_live_slots = set()
+        box.rfid_percent = {}
+        box.operation_depth = 0
+        box.snapshot = box_module.BoxSnapshot()
+
+        box._initialize_rfid()
+
+        self.assertEqual(box.rfid_percent, {0: 2, 1: 96})
+        self.assertEqual(driver.forced_reads, [])
+
+
+class StartupUnload(unittest.TestCase):
+    def make_box(self, recovery_point=None, loaded_slot=0):
+        sys.path.insert(0, str(ROOT))
+        self.addCleanup(sys.path.remove, str(ROOT))
+        import extras.box as box_module
+
+        scripts = []
+        recovery = None
+        if recovery_point is not None:
+            recovery = SimpleNamespace(
+                store=SimpleNamespace(
+                    recovery_point=lambda: recovery_point))
+
+        box = object.__new__(box_module.Box)
+        box.drivers = {1: None}
+        box.store = SimpleNamespace(
+            setting=lambda name, default=False: (
+                True if name == "unload_at_startup_enabled" else default))
+        box.printer = SimpleNamespace(
+            lookup_object=lambda name, default=None: (
+                recovery if name == "power_loss_recovery" else default))
+        box.gcode = SimpleNamespace(
+            run_script_from_command=scripts.append)
+        box.change_engine = SimpleNamespace(
+            _is_print_active=lambda: False,
+            _is_print_paused=lambda: False)
+        box.drivers_ready = True
+        box.klippy_ready = True
+        box.operation_depth = 0
+        box.runout_active = False
+        box.read_live_state = lambda: box_module.BoxSnapshot(
+            data_ready=True, loaded_slot=loaded_slot)
+        box.is_valid_slot = lambda slot: slot == loaded_slot and slot >= 0
+        box._info = lambda _gcmd, _message: None
+        box._warn = lambda _message: None
+        return box, scripts
+
+    def test_startup_unload_is_scheduled_once_after_both_ready(self):
+        box, _scripts = self.make_box()
+        callbacks = []
+        box.reactor = SimpleNamespace(register_callback=callbacks.append)
+        box.startup_unload_scheduled = False
+        box.klippy_ready = True
+        box.drivers_ready = False
+
+        box._schedule_startup_unload()
+        self.assertEqual(callbacks, [])
+
+        box.drivers_ready = True
+        box._schedule_startup_unload()
+        box._schedule_startup_unload()
+        self.assertEqual(len(callbacks), 1)
+
+    def test_loaded_filament_unloads_but_recovery_checkpoint_is_preserved(self):
+        box, scripts = self.make_box()
+        box._startup_unload(0.0)
+        self.assertEqual(scripts, ["BOX_UNLOAD"])
+
+        recovering_box, recovery_scripts = self.make_box(recovery_point={})
+        recovering_box._startup_unload(0.0)
+        self.assertEqual(recovery_scripts, [])
+
+
 class CommandRegistration(unittest.TestCase):
     """Runs the real registration code, which static checks cannot cover."""
 
@@ -164,7 +277,8 @@ class CommandRegistration(unittest.TestCase):
     def test_mixin_commands_are_registered(self):
         for name in ("BOX_SET_ROUTING", "BOX_CLEAR_ROUTING",
                      "BOX_SET_DRY_MODE", "BOX_GET_DRY_MODE", "BOX_PAUSE_DRY",
-                     "CONTINUE_PAUSE_DRY", "BOX_SET_AUTO_DRY_MODE",
+                     "CONTINUE_PAUSE_DRY", "_BOX_SET_UNLOAD_AT_STARTUP",
+                     "BOX_SET_AUTO_DRY_MODE",
                      "BOX_SET_AUTO_HUMIDITY_MODE"):
             self.assertIn(name, self.handlers)
 

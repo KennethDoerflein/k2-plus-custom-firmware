@@ -44,6 +44,7 @@ Klipper and Cartographer commands remain in their own documentation.
 | `_BOX_MATERIAL_SET MATERIAL= TARGET_TEMP=170..350` | Saves a material target temperature. |
 | `_BOX_SET_RUNOUT_SWAP [ENABLE=0\|1]` | Enables or disables automatic matching-slot runout swaps. |
 | `_BOX_SET_UNLOAD_AFTER_PRINT [ENABLE=0\|1]` | Persistently enables or disables unloading after a completed print. |
+| `_BOX_SET_UNLOAD_AT_STARTUP [ENABLE=0\|1]` | Persistently enables or disables unloading filament after startup. |
 | `_BOX_SET_RFID_INSERT_READING [ENABLE=0\|1]` | Enables or disables reads when a spool is inserted. |
 | `_BOX_SET_RFID_STARTUP_READING [ENABLE=0\|1]` | Enables or disables RFID reads during CFS startup. |
 | `_BOX_RFID_MAP_SET CODE= MATERIAL= BRAND= NAME= [TARGET_TEMP=]` | Saves an unknown-tag mapping. |

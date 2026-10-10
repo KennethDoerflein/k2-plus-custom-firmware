@@ -7,8 +7,10 @@ It shows the CFS and filament-path state, lets you select a slot or unload
 filament, and stores the material details for each slot.
 
 Open the widget settings with the cog to change runout swapping, unloading
-after a print, and RFID reading options. The Fluidd console is where the
-firmware reports CFS status, errors, and troubleshooting information.
+after a print, unloading at startup, and RFID reading options. Startup
+unloading is off by default, skips pending power-loss recovery, and may heat,
+home, and move the printer. The Fluidd console is where the firmware reports
+CFS status, errors, and troubleshooting information.
 
 !!! note "Touchscreen"
     **Fluidd is the recommended interface for CFS.** HelixScreen is a
@@ -43,13 +45,12 @@ off by default.
 - **Read RFID on insertion** — when a spool is inserted into the CFS, read
   its RFID tag once to populate its saved filament details. Filament must
   be unloaded.
-- **Read RFID after Klipper starts** — when Klipper starts, read present
-  spools that the CFS internally has no RFID data for. Consequently, a
-  printer power cycle spins every occupied slot. Saved slot details
-  (name, color, material) live in Klipper. RFID remaining % comes from
-  the CFS RFID record and shows on the slot after a successful read.
-  The only reason to enable this is RFID remaining %. Filament must be
-  unloaded.
+- **Read RFID after Klipper starts** — when Klipper starts, use valid RFID
+  records already cached by the CFS to refresh remaining percentages. The
+  firmware physically reads only present slots without a valid cached record;
+  those slots may move. Saved slot details (name, color, material) live in
+  Klipper. The only reason to enable this is RFID remaining %. Filament must
+  be unloaded for any physical reads.
 
 ### External reader
 
