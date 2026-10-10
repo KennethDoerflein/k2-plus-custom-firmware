@@ -57,7 +57,7 @@ MOONRAKER_ASVC = "klipper_mcu\nhelixscreen\nustreamer@stockcam\n"
 
 TIMELAPSE_URL = "https://raw.githubusercontent.com/mainsail-crew/moonraker-timelapse/main/component/timelapse.py"
 FIRMWARE_BASE_URL = "https://github.com/KennethDoerflein/k2-plus-custom-firmware/releases/download"
-FIRMWARE_VERSION = "6.20"
+FIRMWARE_VERSION = "6.20a"
 RELEASE_INDEX_URL = f"https://raw.githubusercontent.com/{FIRMWARE_REPO.replace('https://github.com/', '')}/{FIRMWARE_BRANCH}/index"
 BOOTSTRAP_INSTALL_PATH = Path("/usr/bin/bootstrap")
 TIMEZONE_URL = "http://ip-api.com/line?fields=timezone"
