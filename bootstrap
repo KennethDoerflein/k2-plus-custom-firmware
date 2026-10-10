@@ -546,7 +546,11 @@ def install_helixscreen() -> None:
             raise
 
 
+<<<<<<< HEAD
 def service_control(action: str, services: List[str]) -> None:
+=======
+def service_control(action: str, services: list[str]) -> None:
+>>>>>>> upstream/main
     if shutil.which("systemctl") is None:
         return
     for svc in services:

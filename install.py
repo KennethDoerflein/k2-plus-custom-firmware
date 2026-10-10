@@ -21,16 +21,27 @@ from contextlib import contextmanager
 BASE_URL = "https://github.com/KennethDoerflein/k2-plus-custom-firmware/releases/download"
 FIRMWARE_VERSION = "6.20"
 
+<<<<<<< HEAD
 ROOTFS_SHA256 = "d025120a59d8866ff20f80ad9b10c463b23e799985f58026c1160dcbe59fc6ce"
 KERNEL_SHA256 = "a978c0b4894e8689b481efff7b1778a844823191e8d898b5bef454ec385fc193"
 SWAP_SHA256 = "b53eea3151ac7c68d3de962191534d182d8b7c2de64abcd4260ddc69ffebab45"
 HELIX_VERSION = "v1.0.4"
+=======
+ROOTFS_SHA256 = "40960edb58ea8fbca9a38b78df1951553eeb043aa99fc3183b9133dfe12df3da"
+KERNEL_SHA256 = "a978c0b4894e8689b481efff7b1778a844823191e8d898b5bef454ec385fc193"
+SWAP_SHA256 = "dceaafaa3a1f7e8243d94a759b14bda52eade79c9a8f486fb85982eaac391e8e"
+HELIX_VERSION = "v1.0.3"
+>>>>>>> upstream/main
 HELIX_ARCHIVE = f"helixscreen-k2-{HELIX_VERSION}.tar.gz"
 HELIX_URL = (
     "https://github.com/prestonbrown/helixscreen/releases/download/"
     f"{HELIX_VERSION}/{HELIX_ARCHIVE}"
 )
+<<<<<<< HEAD
 HELIX_SHA256 = "ca31738a821a112303469d5ce87043ab54154b9e966ee0f11610a4a43a3b1071"
+=======
+HELIX_SHA256 = "38d3e297440dce5bcc52c3e2249424c0725e0d4e462c8b8ac5888dad1d3dc4f4"
+>>>>>>> upstream/main
 
 # Download from GitHub Releases (supports files >100MB)
 ROOTFS_URL = f"{BASE_URL}/v{FIRMWARE_VERSION}/rootfs.ext2"
@@ -107,6 +118,11 @@ EXPECTED_CMDLINE_PARTITIONS = (
 _current_step = "preflight"
 # Output inside a step is indented under its title.
 _indent = "  "
+<<<<<<< HEAD
+=======
+_telemetry_context = {}
+_telemetry_failure_done = False
+>>>>>>> upstream/main
 
 
 def _fmt(seconds):
@@ -133,6 +149,13 @@ def log(message):
 
 def log_warn(message):
     print(f"{_indent}\033[33m{message}\033[0m", flush=True)
+<<<<<<< HEAD
+=======
+
+
+def log_status(label, value):
+    log(f"\033[2m{label:<12}\033[0m{value}")
+>>>>>>> upstream/main
 
 
 def log_status(label, value):
@@ -160,6 +183,14 @@ def success(message):
 
 
 def die(msg):
+<<<<<<< HEAD
+=======
+    global _telemetry_failure_done
+    if str(msg) == "install cancelled":
+        _telemetry_failure_done = True
+    else:
+        send_failure_telemetry(error_kind="controlled", message=str(msg))
+>>>>>>> upstream/main
     print(f"\n  \033[1;31mERROR:\033[0m {msg}")
     sys.exit(1)
 
@@ -491,7 +522,11 @@ def parse_wifi_networks(text):
 
 
 def custom_wifi_network(network):
+<<<<<<< HEAD
     """Return the settings custom firmware can use, or None to skip the network."""
+=======
+    """Return the settings Jacobean's firmware can use, or None to skip the network."""
+>>>>>>> upstream/main
     if "ssid" not in network or network.get("disabled") == "1":
         return None
     if any(key.startswith("wep_key") for key in network):
@@ -738,6 +773,7 @@ def wipe_previous_install():
         except OSError as exc:
             die(f"could not remove {path}: {exc}. Rerun the installer to try again.")
     subprocess.run(["sync"], check=True)
+<<<<<<< HEAD
 
 
 def seed_custom_bootstrap():
@@ -776,6 +812,8 @@ def seed_custom_bootstrap():
         except FileNotFoundError:
             pass
         die(f"failed to seed /mnt/UDISK/bootstrap: {exc}")
+=======
+>>>>>>> upstream/main
 
 
 # ---------------------------------------------------------------------------
@@ -964,7 +1002,11 @@ def _ask(prompt):
 
 def show_menu():
     print()
+<<<<<<< HEAD
     log("K2 Plus Custom Firmware is already installed.")
+=======
+    log("Jacobean's firmware is already installed.")
+>>>>>>> upstream/main
     print()
     for number, label in (("1", "Reinstall, keep my setup"), ("2", "Fresh install"), ("3", "Cancel")):
         log(f"  \033[1;36m{number}\033[0m  {label}")
@@ -985,7 +1027,11 @@ def choose_fresh_install():
 
 def confirm_fresh_install():
     print()
+<<<<<<< HEAD
     log("\033[1;31mThis deletes everything on K2 Plus Custom Firmware.\033[0m Nothing is backed up.")
+=======
+    log("\033[1;31mThis deletes everything on Jacobean's firmware.\033[0m Nothing is backed up.")
+>>>>>>> upstream/main
     if _ask("Type erase to continue: ") != "erase":
         die("install cancelled")
 
@@ -995,7 +1041,11 @@ def confirm_install(active_slot, target_slot):
     print()
     firmware_version = read_fw_env("version") or "unknown"
     log_status("Creality", f"{firmware_version} on slot {active_slot}, stays installed")
+<<<<<<< HEAD
     log_status("Custom", f"installs to slot {target_slot}")
+=======
+    log_status("Jacobean's", f"installs to slot {target_slot}")
+>>>>>>> upstream/main
 
     found = previous_install_found()
     fresh_flag = "--fresh" in sys.argv[1:]
@@ -1010,7 +1060,11 @@ def confirm_install(active_slot, target_slot):
             confirm_fresh_install()
             return True
         return False
+<<<<<<< HEAD
     if _ask("Install K2 Plus Custom Firmware? [y/N]: ") not in {"y", "yes"}:
+=======
+    if _ask("Install Jacobean's firmware? [y/N]: ") not in {"y", "yes"}:
+>>>>>>> upstream/main
         die("install cancelled")
     return False
 
@@ -1036,6 +1090,10 @@ def main():
     kept_setup = [] if fresh else previous_bootstrap_paths()
     installed_helix = None if fresh else installed_helix_version()
     seed_helix = not helix_is_current(installed_helix)
+<<<<<<< HEAD
+=======
+    send_telemetry("install_started")
+>>>>>>> upstream/main
 
     prepare_staging_dir()
     check_staging_space(seed_helix)
@@ -1069,9 +1127,12 @@ def main():
             with step("Installing HelixScreen", f"HelixScreen {HELIX_VERSION} installed"):
                 seed_custom_helix_archive(helix_path)
 
+<<<<<<< HEAD
         with step("Seeding bootstrap", "Bootstrap seeded"):
             seed_custom_bootstrap()
 
+=======
+>>>>>>> upstream/main
         stale_units = stale_helix_units()
         if stale_units:
             with step("Removing old HelixScreen units", "Old HelixScreen units removed"):
@@ -1095,12 +1156,20 @@ def main():
         with step("Preparing custom env snapshot", "Custom env snapshot prepared"):
             write_custom_env_blob(target_slot, custom_blob)
 
+<<<<<<< HEAD
         with step("Swapping to custom firmware", "Swapped to custom firmware"):
+=======
+        with step("Swapping to Jacobean's firmware", "Swapped to Jacobean's firmware"):
+>>>>>>> upstream/main
             run_swap()
     finally:
         shutil.rmtree(STAGING_DIR, ignore_errors=True)
 
     success("Install complete")
+<<<<<<< HEAD
+=======
+    send_telemetry("install_success", step="complete")
+>>>>>>> upstream/main
     if kept_setup:
         log("Hard power cycle your printer. Your earlier setup comes back after the restart.")
         log("If it worked before this reinstall, there is nothing else to run.")

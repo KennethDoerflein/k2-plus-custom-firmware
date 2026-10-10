@@ -8,9 +8,20 @@ SSH into the printer and run:
 python3 -c "import urllib.request; exec(urllib.request.urlopen('https://raw.githubusercontent.com/KennethDoerflein/k2-plus-custom-firmware/main/install.py').read(), {'__name__':'__main__'})"
 ```
 
+<<<<<<< HEAD
 Power cycle the printer when instructed.
 
 If custom firmware was installed before, the installer asks whether to keep
+=======
+The installer reports whether the install succeeded or where it failed,
+identified only by a hash of the printer's hardware IDs. Add `--no-telemetry`
+to the end of the command to turn this off. The firmware itself has no
+telemetry.
+
+Power cycle the printer when instructed.
+
+If Jacobean's firmware was installed before, the installer asks whether to keep
+>>>>>>> upstream/main
 your setup or start over. See [Updates & Recovery](updates-recovery.md#update-creality-firmware).
 
 ## First boot
@@ -28,6 +39,8 @@ Then SSH into the printer as `root` (password `creality_2024`) and run:
 /mnt/UDISK/bootstrap
 ```
 *(Note: On initial flash, `/usr/bin/bootstrap` contains the prebuilt script from the rootfs image. Running `/mnt/UDISK/bootstrap` executes your seeded version and automatically updates `/usr/bin/bootstrap`, so for all future runs you can simply type `bootstrap`.)*
+
+Change the password with `passwd` if you so choose.
 
 Change the password with `passwd` if you so choose.
 

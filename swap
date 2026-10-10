@@ -907,7 +907,11 @@ def cmd_status(_args: argparse.Namespace) -> None:
 
 
 def cmd_swap(args: argparse.Namespace) -> None:
+<<<<<<< HEAD
     header("K2 Plus Firmware Swap")
+=======
+    header("Jacobean's K2 Plus Firmware Swap")
+>>>>>>> upstream/main
     require_root()
     require_udisk()
 
