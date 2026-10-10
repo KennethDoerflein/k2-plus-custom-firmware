@@ -1,10 +1,10 @@
 {
   "bootstrap": {
-    "sha256": "f26a6b8705cfdeb2a49dec400cd2a1db492fca2c3e7c0335ad18ee034c4f6004",
+    "sha256": "a52d9f80eb5d071543a53ea000bdbbeb9765b53869c1865c0b061424a7ffc67c",
     "size": 45612
   },
   "extras": {
-    "manifest_sha256": "56363262b110624fb45042e25709b806e6cd1ed07349b4695c0b1118e1f4dfd0",
+    "manifest_sha256": "2c105ae3b3443352fdb10da2aff5e51e6de187e1326447871f45e9c822eaf67e",
     "manifest_size": 3634
   },
   "format": "k2-release-index-v1",
