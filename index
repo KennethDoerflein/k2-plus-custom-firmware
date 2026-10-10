@@ -4,7 +4,7 @@
     "size": 45612
   },
   "extras": {
-    "manifest_sha256": "73fecee6a25bd3820272ef63249da288b7855841e1ce986944afedf79e7dbd29",
+    "manifest_sha256": "56363262b110624fb45042e25709b806e6cd1ed07349b4695c0b1118e1f4dfd0",
     "manifest_size": 3634
   },
   "format": "k2-release-index-v1",
@@ -13,12 +13,12 @@
     "size": 16777216
   },
   "rootfs": {
-    "sha256": "40960edb58ea8fbca9a38b78df1951553eeb043aa99fc3183b9133dfe12df3da",
+    "sha256": "d025120a59d8866ff20f80ad9b10c463b23e799985f58026c1160dcbe59fc6ce",
     "size": 314572800
   },
   "swap": {
     "sha256": "b53eea3151ac7c68d3de962191534d182d8b7c2de64abcd4260ddc69ffebab45",
     "size": 32738
   },
-  "version": "6.18"
+  "version": "6.20"
 }
