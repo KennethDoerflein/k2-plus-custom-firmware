@@ -55,13 +55,13 @@ jobs:
             echo "sync_status=clean" >> $GITHUB_OUTPUT
           else
             echo "sync_status=conflicts" >> $GITHUB_OUTPUT
-            # If conflicts occurred, stage remaining conflict markers so they are visible in PR
-            git add -A
-            git commit -m "chore(upstream): merge upstream with conflict markers for review" || true
+            # Never commit conflict markers: back out the merge entirely.
+            git merge --abort || true
+            git reset --hard HEAD
           fi
 
-      - name: Create or Update Pull Request
-        if: steps.check.outputs.has_changes == 'true'
+      - name: Create Pull Request (clean merges only)
+        if: steps.check.outputs.has_changes == 'true' && steps.sync.outputs.sync_status == 'clean'
         uses: peter-evans/create-pull-request@v6
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -72,14 +72,18 @@ jobs:
           body: |
             ## Automated Upstream Sync
 
-            New commits were detected and pulled from `upstream/main` (`Jacob10383/k2-plus-custom-firmware`).
-
-            ### Status: ${{ steps.sync.outputs.sync_status == 'clean' && '✅ Clean Merge (Tests Passed)' || '⚠️ Conflicts Detected (Review Required)' }}
+            New commits were detected and merged cleanly from `upstream/main` (`Jacob10383/k2-plus-custom-firmware`).
 
             - **Checksum files**: Automatically verified and regenerated via `scripts/release_index.py`.
             - **Compatibility tests**: Executed via `tests/test_compat.py`.
 
-            ${{ steps.sync.outputs.sync_status == 'clean' && 'All checks passed cleanly. This PR is ready to merge.' || 'Please review conflicting files flagged in this PR before merging.' }}
+            Review for upstream telemetry (`send_telemetry`, `TELEMETRY_URL`) and branding before merging.
           labels: |
             upstream-sync
             automated
+
+      - name: Fail on conflicts
+        if: steps.sync.outputs.sync_status == 'conflicts'
+        run: |
+          echo "::error::Upstream merge has conflicts. No PR was opened. Merge upstream/main locally and resolve by hand."
+          exit 1

@@ -19,97 +19,12 @@ from pathlib import Path
 from typing import Iterable
 
 
-# ──────────────────────────────────────────────────────────────────────────
-# motor_control_config_model
-# ──────────────────────────────────────────────────────────────────────────
-
-"""Configuration model for the `[motor_control]` section.
-
-Combines the K2 pin layout with cutter calibration and firmware parameter
-overrides used by startup, fault handling, and command execution.
-"""
+# (motor_control_config_model section is defined after MotorAxes, where ALL_AXES exists)
 
 
 
 
-K2_PIN_LAYOUT = {
-    "motor_x_dir": ("PB9", 0),
-    "motor_x_step": ("PB10", 0),
-    "motor_x_stall": ("PB11", None),
-    "motor_y_dir": ("!PB7", 0),
-    "motor_y_step": ("PB8", 0),
-    "motor_y_stall": ("PB12", None),
-    "motor_z_dir": ("PB5", 0),
-    "motor_z_step": ("PB6", 1),
-    "motor_z_stall": ("PB13", None),
-    "motor_z1_dir": ("PA1", 1),
-    "motor_z1_step": ("PB15", 1),
-    "motor_z1_stall": ("PA10", None),
-    "motor_e_stall": ("nozzle_mcu:PB12", None),
-}
 
-PIN_OPTIONS = tuple(K2_PIN_LAYOUT)
-
-OUTPUT_PIN_OPTIONS = (
-    "motor_x_dir",
-    "motor_x_step",
-    "motor_y_dir",
-    "motor_y_step",
-    "motor_z_dir",
-    "motor_z_step",
-    "motor_z1_dir",
-    "motor_z1_step",
-)
-
-
-@dataclass(frozen=True)
-class MotorPinConfig:
-    raw: str
-    pin_desc: str
-    startup_value: int | None
-
-
-@dataclass(frozen=True)
-class MotorControlConfigModel:
-    raw_options: dict[str, str | None]
-    cut_pos_offset: float
-    pins: dict[str, MotorPinConfig]
-    mcu_temperature_sensors: tuple[str, ...] = ALL_AXES
-
-    @classmethod
-    def from_config(cls, config, param_options=()):
-        accepted = {
-            "cut_pos_offset",
-            *(option.lower() for option in PIN_OPTIONS),
-            *(str(option).lower() for option in param_options),
-        }
-        raw = {
-            option: config.get(option)
-            for option in config.fileconfig.options(config.section)
-            if option.lower() in accepted
-        }
-        pins = {
-            option: MotorPinConfig(
-                raw=pin_desc,
-                pin_desc=pin_desc,
-                startup_value=startup_value,
-            )
-            for option, (pin_desc, startup_value) in K2_PIN_LAYOUT.items()
-        }
-        sensor_option = config.get(
-            "mcu_temperature_sensors", ", ".join(ALL_AXES)).strip().lower()
-        sensor_axes = () if sensor_option in ("", "none") else tuple(
-            axis.strip() for axis in sensor_option.split(","))
-        if any(axis not in ALL_AXES for axis in sensor_axes):
-            raise config.error(
-                "mcu_temperature_sensors must be a comma-separated list of "
-                "x, y, z, z1, e, or none")
-        return cls(
-            raw_options=raw,
-            cut_pos_offset=config.getfloat("cut_pos_offset", 0.4),
-            pins=pins,
-            mcu_temperature_sensors=tuple(dict.fromkeys(sensor_axes)),
-        )
 
 # ──────────────────────────────────────────────────────────────────────────
 # motor_cut_calibration
@@ -2081,6 +1996,98 @@ class MotorAxisController:
             axis: self.target(axis).clear_err_warn_code(timeout=timeout)
             for axis in axes
         }
+
+# ──────────────────────────────────────────────────────────────────────────
+# motor_control_config_model
+# ──────────────────────────────────────────────────────────────────────────
+
+"""Configuration model for the `[motor_control]` section.
+
+Combines the K2 pin layout with cutter calibration and firmware parameter
+overrides used by startup, fault handling, and command execution.
+"""
+
+
+
+
+K2_PIN_LAYOUT = {
+    "motor_x_dir": ("PB9", 0),
+    "motor_x_step": ("PB10", 0),
+    "motor_x_stall": ("PB11", None),
+    "motor_y_dir": ("!PB7", 0),
+    "motor_y_step": ("PB8", 0),
+    "motor_y_stall": ("PB12", None),
+    "motor_z_dir": ("PB5", 0),
+    "motor_z_step": ("PB6", 1),
+    "motor_z_stall": ("PB13", None),
+    "motor_z1_dir": ("PA1", 1),
+    "motor_z1_step": ("PB15", 1),
+    "motor_z1_stall": ("PA10", None),
+    "motor_e_stall": ("nozzle_mcu:PB12", None),
+}
+
+PIN_OPTIONS = tuple(K2_PIN_LAYOUT)
+
+OUTPUT_PIN_OPTIONS = (
+    "motor_x_dir",
+    "motor_x_step",
+    "motor_y_dir",
+    "motor_y_step",
+    "motor_z_dir",
+    "motor_z_step",
+    "motor_z1_dir",
+    "motor_z1_step",
+)
+
+
+@dataclass(frozen=True)
+class MotorPinConfig:
+    raw: str
+    pin_desc: str
+    startup_value: int | None
+
+
+@dataclass(frozen=True)
+class MotorControlConfigModel:
+    raw_options: dict[str, str | None]
+    cut_pos_offset: float
+    pins: dict[str, MotorPinConfig]
+    mcu_temperature_sensors: tuple[str, ...] = ALL_AXES
+
+    @classmethod
+    def from_config(cls, config, param_options=()):
+        accepted = {
+            "cut_pos_offset",
+            *(option.lower() for option in PIN_OPTIONS),
+            *(str(option).lower() for option in param_options),
+        }
+        raw = {
+            option: config.get(option)
+            for option in config.fileconfig.options(config.section)
+            if option.lower() in accepted
+        }
+        pins = {
+            option: MotorPinConfig(
+                raw=pin_desc,
+                pin_desc=pin_desc,
+                startup_value=startup_value,
+            )
+            for option, (pin_desc, startup_value) in K2_PIN_LAYOUT.items()
+        }
+        sensor_option = config.get(
+            "mcu_temperature_sensors", ", ".join(ALL_AXES)).strip().lower()
+        sensor_axes = () if sensor_option in ("", "none") else tuple(
+            axis.strip() for axis in sensor_option.split(","))
+        if any(axis not in ALL_AXES for axis in sensor_axes):
+            raise config.error(
+                "mcu_temperature_sensors must be a comma-separated list of "
+                "x, y, z, z1, e, or none")
+        return cls(
+            raw_options=raw,
+            cut_pos_offset=config.getfloat("cut_pos_offset", 0.4),
+            pins=pins,
+            mcu_temperature_sensors=tuple(dict.fromkeys(sensor_axes)),
+        )
 
 # ──────────────────────────────────────────────────────────────────────────
 # motor_control_debug_surface
