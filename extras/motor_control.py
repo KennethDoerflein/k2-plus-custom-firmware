@@ -19,13 +19,6 @@ from pathlib import Path
 from typing import Iterable
 
 
-# (motor_control_config_model section is defined after MotorAxes, where ALL_AXES exists)
-
-
-
-
-
-
 # ──────────────────────────────────────────────────────────────────────────
 # motor_cut_calibration
 # ──────────────────────────────────────────────────────────────────────────
@@ -657,96 +650,6 @@ class MotorParamRegistry:
                 "cfg_value": cfg_value,
             })
         return applied
-
-# ──────────────────────────────────────────────────────────────────────────
-# motor_pin_manager
-# ──────────────────────────────────────────────────────────────────────────
-
-"""Mainboard motor pin-state manager.
-
-Drives STEP/DIR address straps for the stock Creality MCU during discovery.
-"""
-
-
-
-
-
-PIN_DIR_SEQUENCE = (
-    ("motor_x_dir", 0),
-    ("motor_x_step", 0),
-    ("motor_y_dir", 0),
-    ("motor_y_step", 0),
-    ("motor_z_dir", 0),
-    ("motor_z_step", 1),
-    ("motor_z1_dir", 1),
-    ("motor_z1_step", 1),
-)
-
-PIN_NORMAL_SEQUENCE = (
-    ("motor_x_dir", 0),
-    ("motor_x_step", 0),
-    ("motor_y_dir", 1),
-    ("motor_y_step", 0),
-    ("motor_z_dir", 0),
-    ("motor_z_step", 0),
-    ("motor_z1_dir", 0),
-    ("motor_z1_step", 0),
-)
-
-
-def _shareable_pin_desc(pin_desc: str) -> str:
-    desc = pin_desc.strip()
-    while desc and desc[0] in "!^~":
-        desc = desc[1:].strip()
-    return desc
-
-
-class MotorPinManager:
-    def __init__(self, printer, config_model: MotorControlConfigModel):
-        self.printer = printer
-        self.config_model = config_model
-        self.reactor = printer.get_reactor()
-        self.mcu = printer.lookup_object("mcu")
-        self.ppins = printer.lookup_object("pins")
-        self.outputs = {}
-        self._init_outputs()
-
-    def _init_outputs(self):
-        for option in OUTPUT_PIN_OPTIONS:
-            pin_cfg = self.config_model.pins.get(option)
-            if pin_cfg is None:
-                raise RuntimeError(f"missing required output pin config for {option}")
-            self.ppins.allow_multi_use_pin(_shareable_pin_desc(pin_cfg.pin_desc))
-            pin = self.ppins.setup_pin("digital_out", pin_cfg.pin_desc)
-            initial = int(pin_cfg.startup_value or 0)
-            pin.setup_max_duration(0.0)
-            pin.setup_start_value(initial, initial)
-            self.outputs[option] = pin
-
-    def _schedule_sequence(
-            self, sequence: Iterable[tuple[str, int]]):
-        start = (
-            self.mcu.estimated_print_time(self.reactor.monotonic())
-            + 0.05)
-        for idx, (attr, value) in enumerate(sequence):
-            pin = self.outputs[attr]
-            when = start + idx * 0.003
-            pin.set_digital(when, value)
-        # set_digital queues future writes. Do not broadcast the address-latch
-        # request (or leave cleanup) before the final write's scheduled time.
-        deadline = when + 0.010
-        while True:
-            now = self.reactor.monotonic()
-            remaining = deadline - self.mcu.estimated_print_time(now)
-            if remaining <= 0.0:
-                break
-            self.reactor.pause(now + remaining)
-
-    def set_motor_pin_dir(self):
-        return self._schedule_sequence(PIN_DIR_SEQUENCE)
-
-    def set_motor_pin_normal(self):
-        return self._schedule_sequence(PIN_NORMAL_SEQUENCE)
 
 # ──────────────────────────────────────────────────────────────────────────
 # motor_firmware_client
@@ -2010,6 +1913,7 @@ overrides used by startup, fault handling, and command execution.
 
 
 
+
 K2_PIN_LAYOUT = {
     "motor_x_dir": ("PB9", 0),
     "motor_x_step": ("PB10", 0),
@@ -2540,6 +2444,96 @@ class Mot2TempSensorHub:
             except Exception:
                 pass
         return self.reactor.monotonic() + POLL_INTERVAL
+
+# ──────────────────────────────────────────────────────────────────────────
+# motor_pin_manager
+# ──────────────────────────────────────────────────────────────────────────
+
+"""Mainboard motor pin-state manager.
+
+Drives STEP/DIR address straps for the stock Creality MCU during discovery.
+"""
+
+
+
+
+
+PIN_DIR_SEQUENCE = (
+    ("motor_x_dir", 0),
+    ("motor_x_step", 0),
+    ("motor_y_dir", 0),
+    ("motor_y_step", 0),
+    ("motor_z_dir", 0),
+    ("motor_z_step", 1),
+    ("motor_z1_dir", 1),
+    ("motor_z1_step", 1),
+)
+
+PIN_NORMAL_SEQUENCE = (
+    ("motor_x_dir", 0),
+    ("motor_x_step", 0),
+    ("motor_y_dir", 1),
+    ("motor_y_step", 0),
+    ("motor_z_dir", 0),
+    ("motor_z_step", 0),
+    ("motor_z1_dir", 0),
+    ("motor_z1_step", 0),
+)
+
+
+def _shareable_pin_desc(pin_desc: str) -> str:
+    desc = pin_desc.strip()
+    while desc and desc[0] in "!^~":
+        desc = desc[1:].strip()
+    return desc
+
+
+class MotorPinManager:
+    def __init__(self, printer, config_model: MotorControlConfigModel):
+        self.printer = printer
+        self.config_model = config_model
+        self.reactor = printer.get_reactor()
+        self.mcu = printer.lookup_object("mcu")
+        self.ppins = printer.lookup_object("pins")
+        self.outputs = {}
+        self._init_outputs()
+
+    def _init_outputs(self):
+        for option in OUTPUT_PIN_OPTIONS:
+            pin_cfg = self.config_model.pins.get(option)
+            if pin_cfg is None:
+                raise RuntimeError(f"missing required output pin config for {option}")
+            self.ppins.allow_multi_use_pin(_shareable_pin_desc(pin_cfg.pin_desc))
+            pin = self.ppins.setup_pin("digital_out", pin_cfg.pin_desc)
+            initial = int(pin_cfg.startup_value or 0)
+            pin.setup_max_duration(0.0)
+            pin.setup_start_value(initial, initial)
+            self.outputs[option] = pin
+
+    def _schedule_sequence(
+            self, sequence: Iterable[tuple[str, int]]):
+        start = (
+            self.mcu.estimated_print_time(self.reactor.monotonic())
+            + 0.05)
+        for idx, (attr, value) in enumerate(sequence):
+            pin = self.outputs[attr]
+            when = start + idx * 0.003
+            pin.set_digital(when, value)
+        # set_digital queues future writes. Do not broadcast the address-latch
+        # request (or leave cleanup) before the final write's scheduled time.
+        deadline = when + 0.010
+        while True:
+            now = self.reactor.monotonic()
+            remaining = deadline - self.mcu.estimated_print_time(now)
+            if remaining <= 0.0:
+                break
+            self.reactor.pause(now + remaining)
+
+    def set_motor_pin_dir(self):
+        return self._schedule_sequence(PIN_DIR_SEQUENCE)
+
+    def set_motor_pin_normal(self):
+        return self._schedule_sequence(PIN_NORMAL_SEQUENCE)
 
 # ──────────────────────────────────────────────────────────────────────────
 # motor_control

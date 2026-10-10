@@ -21,7 +21,7 @@ from contextlib import contextmanager
 BASE_URL = "https://github.com/KennethDoerflein/k2-plus-custom-firmware/releases/download"
 FIRMWARE_VERSION = "6.20"
 
-ROOTFS_SHA256 = "d025120a59d8866ff20f80ad9b10c463b23e799985f58026c1160dcbe59fc6ce"
+ROOTFS_SHA256 = "40960edb58ea8fbca9a38b78df1951553eeb043aa99fc3183b9133dfe12df3da"
 KERNEL_SHA256 = "a978c0b4894e8689b481efff7b1778a844823191e8d898b5bef454ec385fc193"
 SWAP_SHA256 = "b53eea3151ac7c68d3de962191534d182d8b7c2de64abcd4260ddc69ffebab45"
 HELIX_VERSION = "v1.0.4"
@@ -491,7 +491,7 @@ def parse_wifi_networks(text):
 
 
 def custom_wifi_network(network):
-    """Return the settings custom firmware can use, or None to skip the network."""
+    """Return settings usable by custom firmware, or None to skip the network."""
     if "ssid" not in network or network.get("disabled") == "1":
         return None
     if any(key.startswith("wep_key") for key in network):
@@ -1071,7 +1071,6 @@ def main():
 
         with step("Seeding bootstrap", "Bootstrap seeded"):
             seed_custom_bootstrap()
-
         stale_units = stale_helix_units()
         if stale_units:
             with step("Removing old HelixScreen units", "Old HelixScreen units removed"):
